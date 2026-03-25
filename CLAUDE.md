@@ -8,10 +8,13 @@ Declarative TypeScript builder API → generates types, state machines, tests, d
 
 A CLI tool (`npx dopespec generate`) that reads TypeScript schema definitions and generates:
 
-- TypeScript discriminated unions from props/states
+- TypeScript discriminated unions from props/lifecycle states
 - Transition functions with runtime guards
+- Domain event types per transition (DDD)
+- Command types per action (DDD)
+- Invariant validation per constraint (DDD)
 - Service orchestrator skeletons per action
-- Unit tests from scenarios
+- Unit tests in Given/When/Then style from scenarios (BDD)
 - E2E test stubs
 - Zod validation from constraints
 - Mermaid diagrams from transitions
@@ -90,7 +93,24 @@ Internal (used via model() callbacks, not exported from index): `from`, `rule`, 
 - Single file per model in schema — contains props, transitions, constraints, scenarios
 - DDD: model()=Aggregate, props=Value Objects, transitions=Domain Events, constraints=Invariants, actions=Commands
 - BDD: each transition scenario auto-generates a test case
+- Guards must use `ctx` as parameter name — codegen serializes guards via `Function.toString()` and relies on `ctx` references in generated code
 - Compile-time + runtime + test strictness
+
+## Generated Output Convention
+
+All generated files for a model live in a flat directory. Each generator produces one file, and cross-file imports use the `./${modelName}.*.js` pattern:
+
+```
+output/
+  order.types.js        — types, props interface
+  order.transitions.js  — transition functions (imports order.types.js)
+  order.events.js       — domain event types (imports order.types.js)
+  order.invariants.js   — constraint validators (imports order.types.js)
+  order.orchestrators.js — action handler skeletons (imports order.types.js)
+  order.tests.js        — unit tests (imports order.transitions.js)
+  order.zod.js          — Zod validation schema
+  order.mermaid.md      — Mermaid state diagram
+```
 
 ## Bootstrap Goal
 

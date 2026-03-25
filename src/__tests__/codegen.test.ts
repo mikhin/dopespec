@@ -1,0 +1,598 @@
+import ts from "typescript";
+import { describe, expect, it } from "vitest";
+import { z } from "zod";
+
+import type { ModelDef } from "../schema/model.js";
+
+import {
+  generateCommands,
+  generateE2EStubs,
+  generateEvents,
+  generateInvariants,
+  generateMermaid,
+  generateOrchestrators,
+  generateTests,
+  generateTransitions,
+  generateTypes,
+  generateZod,
+} from "../codegen/index.js";
+import { guardToSource, relationIdField } from "../codegen/utils.js";
+import { Customer, Order, Pet } from "../examples/pet-store.js";
+import { action } from "../schema/actions.js";
+import { model } from "../schema/model.js";
+import { boolean, number, string } from "../schema/props.js";
+
+// Minimal model with no optional fields
+const Minimal = model("Minimal", {});
+
+// Model with actions but no fields metadata
+const NoFields = model("NoFields", {
+  actions: {
+    doSomething: action(),
+  },
+});
+
+// Model with action that has explicit empty fields
+const EmptyFields = model("EmptyFields", {
+  actions: {
+    ping: action({}),
+  },
+});
+
+// --- generateTypes ---
+
+describe("generateTypes", () => {
+  it("generates status union and props interface for Order", () => {
+    const output = generateTypes(Order as ModelDef);
+
+    expect(output).toContain("OrderStatus");
+    expect(output).toContain("'pending'");
+    expect(output).toContain("'paid'");
+    expect(output).toContain("'shipped'");
+    expect(output).toContain("'delivered'");
+    expect(output).toContain("'cancelled'");
+    expect(output).toContain("OrderProps");
+    expect(output).toContain("total: number");
+    expect(output).toContain("createdAt: Date");
+    expect(output).toContain("status: OrderStatus");
+  });
+
+  it("generates oneOf types (not lifecycle) for Pet", () => {
+    const output = generateTypes(Pet as ModelDef);
+
+    expect(output).toContain("PetStatus");
+    expect(output).toContain("'available'");
+    expect(output).toContain("vaccinated: boolean");
+  });
+
+  it("includes relation fields in Order props", () => {
+    const output = generateTypes(Order as ModelDef);
+
+    expect(output).toContain("customerId: string; // belongsTo Customer");
+    expect(output).toContain("itemsIds: string[]; // hasMany Pet");
+  });
+
+  it("returns empty string for minimal model", () => {
+    expect(generateTypes(Minimal as ModelDef)).toBe("");
+  });
+});
+
+// --- generateTransitions ---
+
+describe("generateTransitions", () => {
+  it("generates transition functions with model-prefixed names", () => {
+    const output = generateTransitions(Order as ModelDef);
+
+    expect(output).toContain("function OrderPay");
+    expect(output).toContain("function OrderShip");
+    expect(output).toContain("function OrderCancel");
+    expect(output).toContain("function OrderDeliver");
+    expect(output).toContain("ctx.status !== 'pending'");
+    expect(output).toContain("status: 'paid'");
+  });
+
+  it("imports props type from convention path", () => {
+    const output = generateTransitions(Order as ModelDef);
+
+    expect(output).toContain(
+      "import type { OrderProps } from './order.types.js'",
+    );
+  });
+
+  it("includes guard check for guarded transitions", () => {
+    const output = generateTransitions(Order as ModelDef);
+
+    expect(output).toContain("ctx.total > 0");
+    expect(output).toContain("Guard failed");
+  });
+
+  it("returns empty string for minimal model", () => {
+    expect(generateTransitions(Minimal as ModelDef)).toBe("");
+  });
+});
+
+// --- generateEvents ---
+
+describe("generateEvents", () => {
+  it("generates event types for Order transitions", () => {
+    const output = generateEvents(Order as ModelDef);
+
+    expect(output).toContain("OrderPayEvent");
+    expect(output).toContain("OrderShipEvent");
+    expect(output).toContain("OrderCancelEvent");
+    expect(output).toContain("OrderDeliverEvent");
+    expect(output).toContain("type: 'OrderPay'");
+    expect(output).toContain("from: 'pending'");
+    expect(output).toContain("to: 'paid'");
+    expect(output).toContain("timestamp: Date");
+    expect(output).toContain("OrderEvent");
+  });
+
+  it("imports props type from convention path", () => {
+    const output = generateEvents(Order as ModelDef);
+
+    expect(output).toContain(
+      "import type { OrderProps } from './order.types.js'",
+    );
+  });
+
+  it("returns empty string for minimal model", () => {
+    expect(generateEvents(Minimal as ModelDef)).toBe("");
+  });
+});
+
+// --- generateCommands ---
+
+describe("generateCommands", () => {
+  it("generates model-prefixed command types with typed payloads", () => {
+    const output = generateCommands(Order as ModelDef);
+
+    expect(output).toContain("OrderAddItemCommand");
+    expect(output).toContain("OrderRemoveItemCommand");
+    expect(output).toContain("type: 'OrderAddItem'");
+    expect(output).toContain("productId: string");
+    expect(output).toContain("quantity: number");
+    expect(output).toContain("OrderCommand");
+  });
+
+  it("falls back to unknown payload when no fields", () => {
+    const output = generateCommands(NoFields as ModelDef);
+
+    expect(output).toContain("payload: unknown");
+  });
+
+  it("generates empty object payload for action({})", () => {
+    const output = generateCommands(EmptyFields as ModelDef);
+
+    expect(output).toContain("payload: {}");
+
+  });
+
+  it("returns empty string for minimal model", () => {
+    expect(generateCommands(Minimal as ModelDef)).toBe("");
+  });
+});
+
+// --- generateInvariants ---
+
+describe("generateInvariants", () => {
+  it("generates validation functions for Order constraints", () => {
+    const output = generateInvariants(Order as ModelDef);
+
+    expect(output).toContain("validateCannotAddWhenCancelled");
+    expect(output).toContain("validateCannotRemoveWhenEmpty");
+    expect(output).toContain("validateOrder");
+    expect(output).toContain("violations");
+  });
+
+  it("imports props type from convention path", () => {
+    const output = generateInvariants(Order as ModelDef);
+
+    expect(output).toContain(
+      "import type { OrderProps } from './order.types.js'",
+    );
+  });
+
+  it("includes guard negation comment", () => {
+    const output = generateInvariants(Order as ModelDef);
+
+    expect(output).toContain("guard=true means violation");
+  });
+
+  it("returns empty string for minimal model", () => {
+    expect(generateInvariants(Minimal as ModelDef)).toBe("");
+  });
+});
+
+// --- generateOrchestrators ---
+
+describe("generateOrchestrators", () => {
+  it("generates handler skeletons for Order actions", () => {
+    const output = generateOrchestrators(Order as ModelDef);
+
+    expect(output).toContain("function handleOrderAddItem");
+    expect(output).toContain("function handleOrderRemoveItem");
+    expect(output).toContain("productId: string");
+    expect(output).toContain("TODO: implement");
+    expect(output).toContain("return ctx");
+  });
+
+  it("imports props type from convention path", () => {
+    const output = generateOrchestrators(Order as ModelDef);
+
+    expect(output).toContain(
+      "import type { OrderProps } from './order.types.js'",
+    );
+  });
+
+  it("returns empty string for minimal model", () => {
+    expect(generateOrchestrators(Minimal as ModelDef)).toBe("");
+  });
+});
+
+// --- generateTests ---
+
+describe("generateTests", () => {
+  it("generates vitest tests from Order scenarios", () => {
+    const output = generateTests(Order as ModelDef);
+
+    expect(output).toContain("describe('Order'");
+    expect(output).toContain("it('given");
+    expect(output).toContain("total");
+    expect(output).toContain("expect(");
+    expect(output).toContain("import { describe, it, expect } from 'vitest'");
+  });
+
+  it("imports transition functions", () => {
+    const output = generateTests(Order as ModelDef);
+
+    expect(output).toContain("import { OrderPay");
+    expect(output).toContain("from './order.transitions.js'");
+  });
+
+  it("uses model-prefixed transition function names", () => {
+    const output = generateTests(Order as ModelDef);
+
+    expect(output).toContain("OrderPay(ctx)");
+  });
+
+  it("includes relation field defaults in ctx setup with TODO", () => {
+    const output = generateTests(Order as ModelDef);
+
+    expect(output).toContain("customerId: ''");
+    expect(output).toContain("itemsIds: []");
+    expect(output).toContain("TODO: replace with real test data");
+  });
+
+  it("generates tests for Pet scenarios", () => {
+    const output = generateTests(Pet as ModelDef);
+
+    expect(output).toContain("describe('Pet'");
+    expect(output).toContain("price");
+  });
+
+  it("returns empty string for model with no scenarios", () => {
+    expect(generateTests(Customer as ModelDef)).toBe("");
+  });
+
+  it("returns empty string for minimal model", () => {
+    expect(generateTests(Minimal as ModelDef)).toBe("");
+  });
+});
+
+// --- generateE2EStubs ---
+
+describe("generateE2EStubs", () => {
+  it("generates e2e stubs for Order transitions", () => {
+    const output = generateE2EStubs(Order as ModelDef);
+
+    expect(output).toContain("test('Order: pay flow");
+    expect(output).toContain("test('Order: ship flow");
+    expect(output).toContain("TODO: setup");
+    expect(output).toContain("TODO: act");
+    expect(output).toContain("TODO: assert");
+    expect(output).toContain("pending");
+    expect(output).toContain("paid");
+  });
+
+  it("returns empty string for minimal model", () => {
+    expect(generateE2EStubs(Minimal as ModelDef)).toBe("");
+  });
+});
+
+// --- generateZod ---
+
+describe("generateZod", () => {
+  it("generates Zod schema for Order props", () => {
+    const output = generateZod(Order as ModelDef);
+
+    expect(output).toContain("import { z } from 'zod'");
+    expect(output).toContain("OrderSchema");
+    expect(output).toContain("z.object");
+    expect(output).toContain("z.number()");
+    expect(output).toContain("z.date()");
+    expect(output).toContain("z.enum(");
+    expect(output).toContain("'pending'");
+  });
+
+  it("includes relation fields in Zod schema", () => {
+    const output = generateZod(Order as ModelDef);
+
+    expect(output).toContain("customerId: z.string()");
+    expect(output).toContain("itemsIds: z.array(z.string())");
+  });
+
+  it("returns empty string for minimal model", () => {
+    expect(generateZod(Minimal as ModelDef)).toBe("");
+  });
+});
+
+// --- generateMermaid ---
+
+describe("generateMermaid", () => {
+  it("generates Mermaid stateDiagram for Order", () => {
+    const output = generateMermaid(Order as ModelDef);
+
+    expect(output).toContain("stateDiagram-v2");
+    expect(output).toContain("[*] --> pending");
+    expect(output).toContain("pending --> paid: pay");
+    expect(output).toContain("paid --> shipped: ship");
+    expect(output).toContain("pending --> cancelled: cancel");
+  });
+
+  it("marks guarded transitions", () => {
+    const output = generateMermaid(Order as ModelDef);
+
+    expect(output).toContain("pay [guarded]");
+  });
+
+  it("returns empty string for minimal model", () => {
+    expect(generateMermaid(Minimal as ModelDef)).toBe("");
+  });
+});
+
+// --- action() fields ---
+
+describe("action() fields", () => {
+  it("stores fields metadata at runtime", () => {
+    const a = action<{ count: number }>({ count: number() });
+
+    expect(a.fields).toBeDefined();
+    expect(a.fields?.["count"]?.kind).toBe("number");
+  });
+
+  it("works without fields (backwards compatible)", () => {
+    const a = action();
+
+    expect(a.fields).toBeUndefined();
+  });
+
+  it("accepts multiple field types", () => {
+    const a = action({
+      active: boolean(),
+      name: string(),
+      score: number(),
+    });
+
+    expect(a.fields?.["name"]?.kind).toBe("string");
+    expect(a.fields?.["score"]?.kind).toBe("number");
+    expect(a.fields?.["active"]?.kind).toBe("boolean");
+  });
+
+  it("throws on invalid field values at runtime", () => {
+    expect(() =>
+      // @ts-expect-error -- intentionally passing invalid value
+      action({ bad: "not-a-propdef" }),
+    ).toThrow('action() field "bad" must be a PropDef');
+  });
+
+  it("throws on null field values at runtime", () => {
+    expect(() =>
+      // @ts-expect-error -- intentionally passing null
+      action({ bad: null }),
+    ).toThrow('action() field "bad" must be a PropDef');
+  });
+});
+
+// --- guardToSource ---
+
+// Typed helper to create guards matching the codegen signature
+type Ctx = Record<string, unknown>;
+const asGuard = (fn: (ctx: Ctx) => unknown) => fn;
+
+describe("guardToSource", () => {
+  it("extracts body from single-expression arrow", () => {
+    const guard = asGuard((ctx) => (ctx["total"] as number) > 0);
+
+    expect(guardToSource(guard)).toContain("ctx");
+  });
+
+  it("throws on destructured parameter", () => {
+    const guard = ({ status }: Ctx) => status === "active";
+
+    expect(() => guardToSource(guard as (ctx: Ctx) => unknown)).toThrow(
+      'Guard parameter must be named "ctx"',
+    );
+  });
+
+  it("throws on renamed parameter", () => {
+    const guard = (state: Ctx) => (state["total"] as number) > 0;
+
+    expect(() => guardToSource(guard as (ctx: Ctx) => unknown)).toThrow(
+      'Guard parameter must be named "ctx"',
+    );
+  });
+
+  it("handles arrow with string containing =>", () => {
+    const guard = asGuard((ctx) => ctx["label"] === "a => b");
+
+    const result = guardToSource(guard);
+
+    expect(result).toContain("ctx");
+  });
+
+  it("handles logical operators", () => {
+    const guard = asGuard(
+      (ctx) => (ctx["total"] as number) > 0 && ctx["status"] === "active",
+    );
+
+    const result = guardToSource(guard);
+
+    expect(result).toContain("ctx");
+    expect(result).toContain("active");
+  });
+
+  it("handles nested arrow in filter expression", () => {
+    const guard = asGuard(
+      (ctx) =>
+        (ctx["items"] as Array<{ active: boolean }>).filter((i) => i.active)
+          .length > 0,
+    );
+
+    const result = guardToSource(guard);
+
+    expect(result).toContain("ctx");
+    expect(result).toContain("filter");
+    expect(result).toContain("active");
+    expect(result).toContain(".length > 0");
+  });
+
+  it("throws on block-body arrow", () => {
+    const guard = asGuard((ctx) => {
+      return (ctx["total"] as number) > 0;
+    });
+
+    expect(() => guardToSource(guard)).toThrow(
+      "Block-body arrow functions not supported",
+    );
+  });
+
+  it("throws on non-arrow function", () => {
+    const guard = function (ctx: Ctx) {
+      return (ctx["total"] as number) > 0;
+    };
+
+    expect(() => guardToSource(guard)).toThrow("Guard must be an arrow");
+  });
+
+  it("throws when body does not reference ctx (minification detection)", () => {
+    // Simulate a minified guard where param was renamed
+    // We manually construct a function whose toString has "ctx =>" but body has "a"
+    const guard = {
+      toString: () => "(ctx) => a > 0",
+    } as unknown as (ctx: Ctx) => unknown;
+
+    expect(() => guardToSource(guard)).toThrow("does not reference 'ctx'");
+  });
+
+  it("handles property access containing => in value (first => is the arrow)", () => {
+    // When => appears inside a string literal in the body, indexOf("=>")
+    // still finds the real arrow first because it precedes the body.
+    const guard = {
+      toString: () => '(ctx) => ctx["=>"] === true',
+    } as unknown as (ctx: Ctx) => unknown;
+
+    const result = guardToSource(guard);
+
+    expect(result).toBe('ctx["=>"] === true');
+  });
+
+  it("known limitation: => before the arrow breaks extraction", () => {
+    // If => appears in a default param before the real arrow, indexOf
+    // finds the wrong one. Unlikely in guards but documented.
+    const guard = {
+      toString: () => '(ctx = "=>") => ctx.total > 0',
+    } as unknown as (ctx: Ctx) => unknown;
+
+    // Misparses: param section is '(ctx = "', not '(ctx = "=>")'
+    expect(() => guardToSource(guard)).toThrow();
+  });
+});
+
+// --- relationIdField ---
+
+describe("relationIdField", () => {
+  it("belongsTo appends Id", () => {
+    expect(relationIdField("customer", "belongsTo")).toBe("customerId");
+  });
+
+  it("hasMany appends Ids to key as-is", () => {
+    expect(relationIdField("items", "hasMany")).toBe("itemsIds");
+  });
+
+  it("hasMany does not depluralize", () => {
+    expect(relationIdField("staff", "hasMany")).toBe("staffIds");
+    expect(relationIdField("addresses", "hasMany")).toBe("addressesIds");
+  });
+});
+
+// --- Generated code validity (issue #10) ---
+
+describe("generated code validity", () => {
+  it("types + transitions compile as valid TypeScript", () => {
+    const source =
+      generateTypes(Order as ModelDef) +
+      "\n" +
+      generateTransitions(Order as ModelDef);
+
+    const result = ts.transpileModule(source, {
+      compilerOptions: {
+        strict: true,
+        target: ts.ScriptTarget.ES2022,
+      },
+    });
+
+    expect(result.diagnostics ?? []).toHaveLength(0);
+  });
+
+  it("types + invariants compile as valid TypeScript", () => {
+    const source =
+      generateTypes(Order as ModelDef) +
+      "\n" +
+      generateInvariants(Order as ModelDef);
+
+    const result = ts.transpileModule(source, {
+      compilerOptions: {
+        strict: true,
+        target: ts.ScriptTarget.ES2022,
+      },
+    });
+
+    expect(result.diagnostics ?? []).toHaveLength(0);
+  });
+
+  it("generated Zod schema parses valid data and rejects invalid data", () => {
+    const source = generateZod(Order as ModelDef);
+
+    // Strip import and export keywords — we provide z directly and return the schema
+    const body = source
+      .replace(/import.*from.*'zod';?\n?/, "")
+      .replace(/export /g, "");
+
+    // Evaluate the generated code with z in scope
+    // eslint-disable-next-line sonarjs/code-eval -- intentional: validating generated code at runtime
+    const factory = new Function("z", `${body}\nreturn OrderSchema;`);
+    // eslint-disable-next-line sonarjs/code-eval -- intentional: validating generated code at runtime
+    const OrderSchema = factory(z) as ReturnType<typeof z.object>;
+
+    // Valid data should parse (includes relation id fields)
+    const valid = {
+      createdAt: new Date(),
+      customerId: "cust-123",
+      itemsIds: ["pet-1", "pet-2"],
+      status: "pending",
+      total: 100,
+    };
+
+    expect(() => OrderSchema.parse(valid)).not.toThrow();
+
+    // Invalid data should throw
+    const invalid = {
+      createdAt: "not-a-date",
+      status: "nonexistent",
+      total: "not-a-number",
+    };
+
+    expect(() => OrderSchema.parse(invalid)).toThrow();
+  });
+});

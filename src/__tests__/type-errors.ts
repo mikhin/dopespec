@@ -11,6 +11,7 @@ import {
   model,
   number,
   oneOf,
+  string,
 } from "../schema/index.js";
 
 const states = ["on", "off"] as const;
@@ -113,3 +114,11 @@ model("DualLifecycle", {
     t: from("on").to("off"),
   }),
 });
+
+// --- action() fields must match Payload when generic is specified ---
+
+// @ts-expect-error: fields key 'wrong' does not match Payload key 'name'
+action<{ name: string }>({ wrong: string() });
+
+// @ts-expect-error: fields value number() does not match Payload type string → StringProp
+action<{ name: string }>({ name: number() });

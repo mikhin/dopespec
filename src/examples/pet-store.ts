@@ -16,7 +16,7 @@ const customerStates = ["active", "suspended", "deleted"] as const;
 
 const Customer = model("Customer", {
   actions: {
-    updateEmail: action<{ email: string }>(),
+    updateEmail: action<{ email: string }>({ email: string() }),
   },
   props: {
     email: string(),
@@ -36,8 +36,8 @@ const petStates = ["available", "reserved", "sold"] as const;
 
 const Pet = model("Pet", {
   actions: {
-    updatePrice: action<{ price: number }>(),
-    vaccinate: action<{ date: string }>(),
+    updatePrice: action<{ price: number }>({ price: number() }),
+    vaccinate: action<{ date: string }>({ date: string() }),
   },
   props: {
     name: string(),
@@ -71,8 +71,11 @@ const orderStates = [
 
 const Order = model("Order", {
   actions: {
-    addItem: action<{ productId: string; quantity: number }>(),
-    removeItem: action<{ itemId: string }>(),
+    addItem: action<{ productId: string; quantity: number }>({
+      productId: string(),
+      quantity: number(),
+    }),
+    removeItem: action<{ itemId: string }>({ itemId: string() }),
   },
   constraints: ({ rule }) => ({
     cannotAddWhenCancelled: rule()
