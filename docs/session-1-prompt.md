@@ -27,28 +27,41 @@ Init a new TypeScript project (pnpm, vitest, strict tsconfig) and implement the 
 ## Example of What Should Work After This Session
 
 ```typescript
-import { model, oneOf, from, rule, action, number, string, hasMany, belongsTo } from './schema'
+import {
+  model,
+  oneOf,
+  from,
+  rule,
+  action,
+  number,
+  string,
+  hasMany,
+  belongsTo,
+} from "./schema";
 
-const states = ['pending', 'paid', 'shipped'] as const
+const states = ["pending", "paid", "shipped"] as const;
 
-const Order = model('Order', {
+const Order = model("Order", {
   props: {
     total: number(),
     status: oneOf(states),
   },
   transitions: {
-    pay: from(states[0]).to(states[1])
-      .when(ctx => ctx.total > 0)
+    pay: from(states[0])
+      .to(states[1])
+      .when((ctx) => ctx.total > 0)
       .scenario({ total: 100 }, states[1])
       .scenario({ total: 0 }, states[0]),
   },
   constraints: {
-    noop: rule().when(ctx => ctx.total === 0).prevent('addItem'),
+    noop: rule()
+      .when((ctx) => ctx.total === 0)
+      .prevent("addItem"),
   },
   actions: {
     addItem: action<{ productId: string }>(),
   },
-})
+});
 ```
 
 This should compile with zero errors and the test suite should pass.

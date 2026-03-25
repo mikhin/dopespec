@@ -1,6 +1,7 @@
 # dopespec — Schema-first domain modeling ("Prisma for business logic")
 
 ## Core Schema Concepts
+
 - [ ] Models — aggregates (e.g. Order, Pet, Customer)
 - [ ] Props — typed fields, value objects
 - [ ] Actions — commands (e.g. placeOrder, adopt, return)
@@ -11,6 +12,7 @@
 - [ ] Scenarios — typed inline per transition: .scenario(givenProps, expectedState), compile-time checked
 
 ## Design Principles
+
 - [ ] Schema as TypeScript builder API — IDE autocomplete, linting, type checking for free
 - [ ] Single DSL — models, transitions, constraints, scenarios in one file per model
 - [ ] DDD built in — model()=Aggregate, props=VO, transitions=Events, constraints=Invariants, actions=Commands
@@ -25,6 +27,7 @@
 - [ ] "Prisma for business logic" — confirmed market gap, positioning statement
 
 ## Codegen (MVP)
+
 - [ ] TypeScript discriminated unions from props/states
 - [ ] Transition functions with runtime guards
 - [ ] Service orchestrator skeletons per action
@@ -34,6 +37,7 @@
 - [ ] Mermaid diagrams from transitions
 
 ## ESLint Plugin (future, not MVP)
+
 - [ ] no-unreachable-state — every state reachable from initial
 - [ ] no-deadlock-state — every non-final state has outgoing transition
 - [ ] no-duplicate-transitions — no two transitions from same state on same event
@@ -59,19 +63,23 @@
 - [ ] no-string-references — after as const, all references typed
 
 ## Non-tech Participation
+
 - [ ] MVP: non-tech reads schema + auto-generated diagrams, comments in PR. Does not edit directly.
 - [ ] Future: visual drag-n-drop editor for editing (Cloud, paid)
 
 ## Migration Strategy
+
 - [ ] Existing md business specs (permissions, pinned shifts, etc.) are first candidates for migration to schema
 - [ ] Incremental adoption — migrate one model at a time, not big bang
 
 ## Business Model
+
 - [ ] CLI — open source, npm package, `npx domainspec generate`
 - [ ] Cloud — paid SaaS: visual editor, collaboration, hosted diagrams, version history (future, needs BE+FE+DB)
 - [ ] CLI proves product works, Cloud sells convenience
 
 ## Bootstrap Strategy
+
 - [ ] Self-hosting — generator built with itself, proof that product works
 - [ ] v0 generator written by hand
 - [ ] Generator's own models described in its own schema
@@ -79,6 +87,7 @@
 - [ ] First external customer adopts CLI as dev dependency, runs codegen in their repo
 
 ## Influenced By
+
 - Nick Tune DSL (declarative state definitions, TypeScript, DDD aggregate)
 - Prisma (schema → codegen pipeline)
 - OpenAPI (spec-first → generated types/client)
