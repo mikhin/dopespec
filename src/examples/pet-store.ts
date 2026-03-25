@@ -7,6 +7,7 @@ import {
   lifecycle,
   model,
   number,
+  optional,
   string,
 } from "../schema/index.js";
 
@@ -39,8 +40,14 @@ const Pet = model("Pet", {
     updatePrice: action<{ price: number }>({ price: number() }),
     vaccinate: action<{ date: string }>({ date: string() }),
   },
+  constraints: ({ rule }) => ({
+    nicknameTooLong: rule()
+      .when((ctx) => ctx.nickname !== undefined && ctx.nickname.length > 20)
+      .prevent("vaccinate"),
+  }),
   props: {
     name: string(),
+    nickname: optional(string()),
     price: number(),
     species: string(),
     status: lifecycle(petStates),
@@ -50,7 +57,9 @@ const Pet = model("Pet", {
     release: from(petStates.reserved).to(petStates.available),
     reserve: from(petStates.available)
       .to(petStates.reserved)
-      .when((ctx) => ctx.vaccinated === true),
+      .when((ctx) => ctx.vaccinated === true)
+      .scenario({ vaccinated: true }, petStates.reserved)
+      .scenario({ vaccinated: false }, petStates.available),
     sell: from(petStates.reserved)
       .to(petStates.sold)
       .when((ctx) => ctx.price > 0)

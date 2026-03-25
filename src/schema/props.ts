@@ -2,9 +2,12 @@ export type BooleanProp = PropDef<"boolean", null>;
 
 export type DateProp = PropDef<"date", null>;
 
-export type InferContext<Props extends Record<string, PropDef>> = {
-  [K in keyof Props]: InferPropType<Props[K]>;
-};
+// Prettify: flattens intersection for IDE tooltips
+export type InferContext<Props extends Record<string, PropDef>> =
+  InferContextRaw<Props> extends infer T
+    ? { [K in keyof T]: T[K] } & {}
+    : never;
+
 export type InferPropType<P> = P extends StringProp
   ? string
   : P extends NumberProp
@@ -45,6 +48,21 @@ export type PropKind =
 
 export type StringProp = PropDef<"string", null>;
 
+type InferContextRaw<Props extends Record<string, PropDef>> = {
+  [K in keyof Props as Props[K] extends OptionalPropDef
+    ? K
+    : never]?: InferPropType<Props[K]>;
+} & {
+  [K in keyof Props as Props[K] extends OptionalPropDef
+    ? never
+    : K]: InferPropType<Props[K]>;
+};
+
+/** Runtime brand for optional props — set by optional(), checked by isOptional(). */
+const OPTIONAL_BRAND: unique symbol = Symbol("dopespec.optional");
+
+export { OPTIONAL_BRAND };
+
 /** Symbol used to store the original tuple on a StatesObject. */
 const STATES_VALUES: unique symbol = Symbol("dopespec.states");
 
@@ -60,6 +78,32 @@ export const string = (): StringProp => ({ kind: "string", values: null });
 export const number = (): NumberProp => ({ kind: "number", values: null });
 export const boolean = (): BooleanProp => ({ kind: "boolean", values: null });
 export const date = (): DateProp => ({ kind: "date", values: null });
+
+export type OptionalPropDef<P extends PropDef = PropDef> = P & {
+  readonly [OPTIONAL_BRAND]: true;
+};
+
+/** Wraps a prop as optional. Lifecycle props cannot be optional — a model always has a current state. */
+export const optional = <P extends PropDef>(
+  prop: P & (P extends LifecycleProp<readonly string[]> ? never : P),
+): OptionalPropDef<P> => {
+  if (prop.kind === "lifecycle") {
+    throw new Error("lifecycle props cannot be optional");
+  }
+
+  const result = { ...prop };
+
+  Object.defineProperty(result, OPTIONAL_BRAND, {
+    enumerable: false,
+    value: true,
+  });
+
+  return result as unknown as OptionalPropDef<P>;
+};
+
+/** Check if a prop was wrapped with optional() at runtime. */
+export const isOptional = (prop: PropDef): prop is OptionalPropDef =>
+  OPTIONAL_BRAND in prop && (prop as OptionalPropDef)[OPTIONAL_BRAND];
 
 export const oneOf = <const T extends readonly string[]>(
   values: T,

@@ -17,14 +17,17 @@ export type TransitionBuilder<
   To extends string = string,
   Ctx = Record<string, unknown>,
   States extends string = string,
-> = TransitionData<From, To, Ctx, States> & {
+> = {
   scenario(
     given: Partial<Ctx>,
     expected: States,
   ): TransitionBuilder<From, To, Ctx, States>;
-  /** Replaces previous guard (last-wins semantics). */
+  /**
+   * Replaces previous guard (last-wins semantics).
+   * Guards on optional props must handle undefined values — no automatic null checks are added.
+   */
   when(fn: (ctx: Ctx) => boolean): TransitionBuilder<From, To, Ctx, States>;
-};
+} & TransitionData<From, To, Ctx, States>;
 
 /** Plain data — stored in ModelDef, consumed by codegen. No builder methods. */
 export type TransitionData<

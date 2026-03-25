@@ -1,5 +1,6 @@
 import type { ModelDef } from "../schema/model.js";
 
+import { isOptional } from "../schema/props.js";
 import {
   capitalize,
   getRelations,
@@ -24,7 +25,10 @@ export const generateZod = (model: ModelDef): string => {
 
   if (model.props) {
     for (const [key, prop] of Object.entries(model.props)) {
-      fields.push(`  ${key}: ${propKindToZod(prop)},`);
+      const zodType =
+        propKindToZod(prop) + (isOptional(prop) ? ".optional()" : "");
+
+      fields.push(`  ${key}: ${zodType},`);
     }
   }
 

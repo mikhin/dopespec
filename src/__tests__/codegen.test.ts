@@ -23,7 +23,7 @@ import { guardToSource, relationIdField } from "../codegen/utils.js";
 import { Customer, Order, Pet } from "../examples/pet-store.js";
 import { action } from "../schema/actions.js";
 import { model } from "../schema/model.js";
-import { boolean, number, string } from "../schema/props.js";
+import { boolean, number, oneOf, optional, string } from "../schema/props.js";
 
 // Minimal model with no optional fields
 const Minimal = model("Minimal", {});
@@ -39,6 +39,14 @@ const NoFields = model("NoFields", {
 const EmptyFields = model("EmptyFields", {
   actions: {
     ping: action({}),
+  },
+});
+
+// Model with an optional oneOf prop
+const WithOptionalEnum = model("Widget", {
+  props: {
+    color: optional(oneOf(["red", "blue", "green"] as const)),
+    name: string(),
   },
 });
 
@@ -84,6 +92,26 @@ describe("generateTypes", () => {
 
   it("returns empty string for minimal model", () => {
     expect(generateTypes(Minimal as ModelDef)).toBe("");
+  });
+
+  it("generates optional prop with ? marker", () => {
+    const output = generateTypes(Pet as ModelDef);
+
+    expect(output).toContain("nickname?: string");
+  });
+
+  it("generates required props without ? marker", () => {
+    const output = generateTypes(Pet as ModelDef);
+
+    expect(output).toMatch(/\bname: string/);
+    expect(output).toMatch(/\bprice: number/);
+  });
+
+  it("generates optional oneOf prop with ? and union type", () => {
+    const output = generateTypes(WithOptionalEnum as ModelDef);
+
+    expect(output).toContain("color?: WidgetColor");
+    expect(output).toContain("name: string");
   });
 });
 
@@ -333,6 +361,24 @@ describe("generateZod", () => {
 
   it("returns empty string for minimal model", () => {
     expect(generateZod(Minimal as ModelDef)).toBe("");
+  });
+
+  it("generates .optional() for optional props", () => {
+    const output = generateZod(Pet as ModelDef);
+
+    expect(output).toContain("nickname: z.string().optional()");
+  });
+
+  it("does not add .optional() to required props", () => {
+    const output = generateZod(Pet as ModelDef);
+
+    expect(output).toMatch(/\bname: z\.string\(\),/);
+  });
+
+  it("generates .optional() for optional oneOf prop", () => {
+    const output = generateZod(WithOptionalEnum as ModelDef);
+
+    expect(output).toContain("z.enum(['red', 'blue', 'green']).optional()");
   });
 });
 

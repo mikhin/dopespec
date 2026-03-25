@@ -1,5 +1,6 @@
 import type { ModelDef } from "../schema/model.js";
 
+import { isOptional } from "../schema/props.js";
 import {
   capitalize,
   getRelations,
@@ -42,7 +43,9 @@ export const generateTypes = (model: ModelDef): string => {
       tsType = propKindToTS(prop);
     }
 
-    return `  ${key}: ${tsType};`;
+    const opt = isOptional(prop) ? "?" : "";
+
+    return `  ${key}${opt}: ${tsType};`;
   });
 
   // Add relation fields: belongsTo → string (foreign key id), hasMany → string[] (ids)

@@ -33,6 +33,7 @@ const states = lifecycle.states(
 const Order = model("Order", {
   props: {
     total: number(),
+    nickname: optional(string()), // optional() = key?: Type in generated output
     status: lifecycle(states), // lifecycle() = state machine states
     priority: oneOf(["low", "high"] as const), // oneOf() = regular enum, not states
   },
@@ -80,7 +81,7 @@ src/
   examples/     — pet store example
 ```
 
-Public exports: `model`, `lifecycle`, `oneOf`, `string`, `number`, `boolean`, `date`, `action`, `hasMany`, `belongsTo`, `ref`.
+Public exports: `model`, `lifecycle`, `oneOf`, `optional`, `string`, `number`, `boolean`, `date`, `action`, `hasMany`, `belongsTo`, `ref`.
 Internal (used via model() callbacks, not exported from index): `from`, `rule`, `createTypedFrom`, `createTypedRule`.
 
 ## Design Rules

@@ -9,7 +9,16 @@ export type {
   TransitionHelpers,
 } from "./model.js";
 
-export { boolean, date, lifecycle, number, oneOf, string } from "./props.js";
+export {
+  boolean,
+  date,
+  isOptional,
+  lifecycle,
+  number,
+  oneOf,
+  optional,
+  string,
+} from "./props.js";
 export type {
   BooleanProp,
   DateProp,
@@ -18,6 +27,7 @@ export type {
   LifecycleProp,
   NumberProp,
   OneOfProp,
+  OptionalPropDef,
   PropDef,
   PropKind,
   StringProp,

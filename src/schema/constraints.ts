@@ -2,12 +2,15 @@
 export type ConstraintBuilder<
   Ctx = Record<string, unknown>,
   ActionKeys extends string = string,
-> = ConstraintData<Ctx, ActionKeys> & {
+> = {
   /** Replaces previous prevented action (last-wins semantics). */
   prevent(actionName: ActionKeys): ConstraintBuilder<Ctx, ActionKeys>;
-  /** Replaces previous guard (last-wins semantics). */
+  /**
+   * Replaces previous guard (last-wins semantics).
+   * Guards on optional props must handle undefined values — no automatic null checks are added.
+   */
   when(fn: (ctx: Ctx) => boolean): ConstraintBuilder<Ctx, ActionKeys>;
-};
+} & ConstraintData<Ctx, ActionKeys>;
 
 /** Plain data — stored in ModelDef, consumed by codegen. No builder methods. */
 export type ConstraintData<

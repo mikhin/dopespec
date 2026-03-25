@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
 
+import type {
+  InferContext,
+  OptionalPropDef,
+  PropDef,
+} from "../schema/props.js";
+
 import { action } from "../schema/actions.js";
 import { rule } from "../schema/constraints.js";
 import { model } from "../schema/model.js";
@@ -9,6 +15,8 @@ import {
   lifecycle,
   number,
   oneOf,
+  optional,
+  OPTIONAL_BRAND,
   string,
 } from "../schema/props.js";
 import { belongsTo, hasMany } from "../schema/relations.js";
@@ -75,6 +83,82 @@ describe("props", () => {
 
     expect(prop.kind).toBe("lifecycle");
     expect(prop.values).toEqual(["pending", "done"]);
+  });
+
+  it("optional() wraps a prop with optional flag", () => {
+    const prop = optional(string());
+
+    expect(prop.kind).toBe("string");
+    expect(prop.values).toBe(null);
+    expect(OPTIONAL_BRAND in prop).toBe(true);
+  });
+
+  it("optional() preserves oneOf values", () => {
+    const prop = optional(oneOf(["a", "b"] as const));
+
+    expect(prop.kind).toBe("oneOf");
+    expect(prop.values).toEqual(["a", "b"]);
+    expect(OPTIONAL_BRAND in prop).toBe(true);
+  });
+
+  it("optional() preserves number prop", () => {
+    const prop = optional(number());
+
+    expect(prop.kind).toBe("number");
+    expect(OPTIONAL_BRAND in prop).toBe(true);
+  });
+
+  it("optional() preserves boolean prop", () => {
+    const prop = optional(boolean());
+
+    expect(prop.kind).toBe("boolean");
+    expect(prop.values).toBe(null);
+    expect(OPTIONAL_BRAND in prop).toBe(true);
+  });
+
+  it("optional() preserves date prop", () => {
+    const prop = optional(date());
+
+    expect(prop.kind).toBe("date");
+    expect(prop.values).toBe(null);
+    expect(OPTIONAL_BRAND in prop).toBe(true);
+  });
+
+  it("optional(lifecycle()) is a compile-time error", () => {
+    const states = lifecycle.states("a", "b");
+
+    // @ts-expect-error — lifecycle props cannot be optional
+    expect(() => optional(lifecycle(states))).toThrow(
+      "lifecycle props cannot be optional",
+    );
+  });
+
+  it("optional(lifecycle() as any) throws at runtime", () => {
+    const states = lifecycle.states("a", "b");
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- testing runtime guard
+    expect(() => optional(lifecycle(states) as any)).toThrow(
+      "lifecycle props cannot be optional",
+    );
+  });
+
+  it("InferContext makes optional props optional and required props required", () => {
+    type Props = {
+      age: PropDef<"number", null>;
+      name: PropDef<"string", null>;
+      phone: OptionalPropDef<PropDef<"string", null>>;
+    };
+    type Ctx = InferContext<Props>;
+
+    // Required keys are present
+    const _checkRequired: Ctx = { age: 1, name: "a" };
+
+    // Optional key is accepted
+    const _checkOptional: Ctx = { age: 1, name: "a", phone: "555" };
+
+    // Suppress unused warnings
+    expect(_checkRequired).toBeDefined();
+    expect(_checkOptional).toBeDefined();
   });
 });
 
@@ -244,6 +328,40 @@ describe("guard execution", () => {
     expect(guard).not.toBeNull();
     expect(guard?.({ locked: true, status: "active" })).toBe(true);
     expect(guard?.({ locked: false, status: "active" })).toBe(false);
+  });
+
+  it("guard on optional prop handles undefined and present values", () => {
+    const states = ["draft", "published"] as const;
+    const m = model("Article", {
+      actions: { publish: action() },
+      constraints: ({ rule }) => ({
+        subtitleTooLong: rule()
+          .when((ctx) => ctx.subtitle !== undefined && ctx.subtitle.length > 50)
+          .prevent("publish"),
+      }),
+      props: {
+        status: lifecycle(states),
+        subtitle: optional(string()),
+        title: string(),
+      },
+    });
+    const guard = m.constraints?.subtitleTooLong.guard;
+
+    expect(guard).not.toBeNull();
+    // undefined — guard does not fire
+    expect(guard?.({ status: "draft", title: "hi" })).toBe(false);
+    // short subtitle — guard does not fire
+    expect(guard?.({ status: "draft", subtitle: "short", title: "hi" })).toBe(
+      false,
+    );
+    // long subtitle — guard fires
+    expect(
+      guard?.({
+        status: "draft",
+        subtitle: "a".repeat(51),
+        title: "hi",
+      }),
+    ).toBe(true);
   });
 });
 
