@@ -45,6 +45,17 @@ export type PropKind =
 
 export type StringProp = PropDef<"string", null>;
 
+/** Symbol used to store the original tuple on a StatesObject. */
+const STATES_VALUES: unique symbol = Symbol("dopespec.states");
+
+/** Phantom brand — type-level only, prevents structural spoofing. Same pattern as ModelRef. */
+declare const STATES_BRAND: unique symbol;
+
+/** Object returned by lifecycle.states() — named keys mapping to themselves, plus a hidden tuple. */
+export type StatesObject<T extends readonly string[]> = {
+  readonly [K in T[number]]: K;
+} & { readonly [STATES_BRAND]: true; readonly [STATES_VALUES]: T };
+
 export const string = (): StringProp => ({ kind: "string", values: null });
 export const number = (): NumberProp => ({ kind: "number", values: null });
 export const boolean = (): BooleanProp => ({ kind: "boolean", values: null });
@@ -57,9 +68,43 @@ export const oneOf = <const T extends readonly string[]>(
   values,
 });
 
-export const lifecycle = <const T extends readonly string[]>(
+function _lifecycle<const T extends readonly string[]>(
+  values: StatesObject<T>,
+): LifecycleProp<T>;
+function _lifecycle<const T extends readonly string[]>(
   values: T,
-): LifecycleProp<T> => ({
-  kind: "lifecycle",
-  values,
+): LifecycleProp<T>;
+function _lifecycle(
+  values: readonly string[] | StatesObject<readonly string[]>,
+): LifecycleProp<readonly string[]> {
+  const tuple = Array.isArray(values)
+    ? values
+    : (values as StatesObject<readonly string[]>)[STATES_VALUES];
+
+  return { kind: "lifecycle", values: tuple };
+}
+
+export const lifecycle = Object.assign(_lifecycle, {
+  states: <const T extends readonly string[]>(...names: T): StatesObject<T> => {
+    const seen = new Set<string>();
+
+    for (const name of names) {
+      if (seen.has(name)) {
+        throw new Error(`lifecycle.states() received duplicate name '${name}'`);
+      }
+
+      seen.add(name);
+    }
+
+    const obj = {} as Record<string, string>;
+
+    for (const name of names) obj[name] = name;
+
+    Object.defineProperty(obj, STATES_VALUES, {
+      enumerable: false,
+      value: names,
+    });
+
+    return Object.freeze(obj) as StatesObject<T>;
+  },
 });

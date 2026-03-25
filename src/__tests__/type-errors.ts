@@ -115,6 +115,26 @@ model("DualLifecycle", {
   }),
 });
 
+// --- lifecycle.states() must constrain from/to just like as const arrays ---
+
+const namedStates = lifecycle.states("on", "off");
+
+model("BadFromNamed", {
+  props: { status: lifecycle(namedStates) },
+  transitions: ({ from }) => ({
+    // @ts-expect-error: 'invalid' is not a member of 'on' | 'off'
+    t: from("invalid").to("off"),
+  }),
+});
+
+model("BadToNamed", {
+  props: { status: lifecycle(namedStates) },
+  transitions: ({ from }) => ({
+    // @ts-expect-error: 'broken' is not a member of 'on' | 'off'
+    t: from(namedStates.on).to("broken"),
+  }),
+});
+
 // --- action() fields must match Payload when generic is specified ---
 
 // @ts-expect-error: fields key 'wrong' does not match Payload key 'name'

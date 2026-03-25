@@ -12,7 +12,7 @@ import {
 
 // --- Customer ---
 
-const customerStates = ["active", "suspended", "deleted"] as const;
+const customerStates = lifecycle.states("active", "suspended", "deleted");
 
 const Customer = model("Customer", {
   actions: {
@@ -24,15 +24,15 @@ const Customer = model("Customer", {
     status: lifecycle(customerStates),
   },
   transitions: ({ from }) => ({
-    delete: from(customerStates[0]).to(customerStates[2]),
-    reactivate: from(customerStates[1]).to(customerStates[0]),
-    suspend: from(customerStates[0]).to(customerStates[1]),
+    delete: from(customerStates.active).to(customerStates.deleted),
+    reactivate: from(customerStates.suspended).to(customerStates.active),
+    suspend: from(customerStates.active).to(customerStates.suspended),
   }),
 });
 
 // --- Pet ---
 
-const petStates = ["available", "reserved", "sold"] as const;
+const petStates = lifecycle.states("available", "reserved", "sold");
 
 const Pet = model("Pet", {
   actions: {
@@ -47,27 +47,27 @@ const Pet = model("Pet", {
     vaccinated: boolean(),
   },
   transitions: ({ from }) => ({
-    release: from(petStates[1]).to(petStates[0]),
-    reserve: from(petStates[0])
-      .to(petStates[1])
+    release: from(petStates.reserved).to(petStates.available),
+    reserve: from(petStates.available)
+      .to(petStates.reserved)
       .when((ctx) => ctx.vaccinated === true),
-    sell: from(petStates[1])
-      .to(petStates[2])
+    sell: from(petStates.reserved)
+      .to(petStates.sold)
       .when((ctx) => ctx.price > 0)
-      .scenario({ price: 50, vaccinated: true }, petStates[2])
-      .scenario({ price: 0, vaccinated: true }, petStates[1]),
+      .scenario({ price: 50, vaccinated: true }, petStates.sold)
+      .scenario({ price: 0, vaccinated: true }, petStates.reserved),
   }),
 });
 
 // --- Order ---
 
-const orderStates = [
+const orderStates = lifecycle.states(
   "pending",
   "paid",
   "shipped",
   "delivered",
   "cancelled",
-] as const;
+);
 
 const Order = model("Order", {
   actions: {
@@ -79,7 +79,7 @@ const Order = model("Order", {
   },
   constraints: ({ rule }) => ({
     cannotAddWhenCancelled: rule()
-      .when((ctx) => ctx.status === orderStates[4])
+      .when((ctx) => ctx.status === orderStates.cancelled)
       .prevent("addItem"),
     cannotRemoveWhenEmpty: rule()
       .when((ctx) => ctx.total === 0)
@@ -95,14 +95,14 @@ const Order = model("Order", {
     item: hasMany(Pet),
   },
   transitions: ({ from }) => ({
-    cancel: from(orderStates[0]).to(orderStates[4]),
-    deliver: from(orderStates[2]).to(orderStates[3]),
-    pay: from(orderStates[0])
-      .to(orderStates[1])
+    cancel: from(orderStates.pending).to(orderStates.cancelled),
+    deliver: from(orderStates.shipped).to(orderStates.delivered),
+    pay: from(orderStates.pending)
+      .to(orderStates.paid)
       .when((ctx) => ctx.total > 0)
-      .scenario({ total: 100 }, orderStates[1])
-      .scenario({ total: 0 }, orderStates[0]),
-    ship: from(orderStates[1]).to(orderStates[2]),
+      .scenario({ total: 100 }, orderStates.paid)
+      .scenario({ total: 0 }, orderStates.pending),
+    ship: from(orderStates.paid).to(orderStates.shipped),
   }),
 });
 

@@ -40,8 +40,37 @@ describe("props", () => {
     expect(prop.values).toEqual(["a", "b", "c"]);
   });
 
+  // as const arrays tested for backward compat; lifecycle.states() is the preferred API
   it("lifecycle() captures values", () => {
     const states = ["pending", "done"] as const;
+    const prop = lifecycle(states);
+
+    expect(prop.kind).toBe("lifecycle");
+    expect(prop.values).toEqual(["pending", "done"]);
+  });
+
+  it("lifecycle.states() creates named state object", () => {
+    const states = lifecycle.states("pending", "paid", "shipped");
+
+    expect(states.pending).toBe("pending");
+    expect(states.paid).toBe("paid");
+    expect(states.shipped).toBe("shipped");
+  });
+
+  it("lifecycle.states() throws on duplicate names", () => {
+    expect(() => lifecycle.states("a", "b", "a")).toThrow(
+      "lifecycle.states() received duplicate name 'a'",
+    );
+  });
+
+  it("lifecycle.states() result is frozen", () => {
+    const states = lifecycle.states("a", "b");
+
+    expect(Object.isFrozen(states)).toBe(true);
+  });
+
+  it("lifecycle() accepts lifecycle.states() result", () => {
+    const states = lifecycle.states("pending", "done");
     const prop = lifecycle(states);
 
     expect(prop.kind).toBe("lifecycle");
@@ -347,6 +376,27 @@ describe("model", () => {
 
     expect(m.transitions?.move.from).toBe("a");
     expect(m.transitions?.move.to).toBe("b");
+  });
+
+  it("typed from() works with lifecycle.states() named references", () => {
+    const states = lifecycle.states("pending", "paid", "shipped");
+    const m = model("Order", {
+      props: { status: lifecycle(states), total: number() },
+      transitions: ({ from }) => ({
+        pay: from(states.pending)
+          .to(states.paid)
+          .when((ctx) => ctx.total > 0)
+          .scenario({ total: 100 }, states.paid)
+          .scenario({ total: 0 }, states.pending),
+        ship: from(states.paid).to(states.shipped),
+      }),
+    });
+
+    expect(m.transitions?.pay.from).toBe("pending");
+    expect(m.transitions?.pay.to).toBe("paid");
+    expect(m.transitions?.ship.from).toBe("paid");
+    expect(m.transitions?.ship.to).toBe("shipped");
+    expect(m.transitions?.pay.scenarios).toHaveLength(2);
   });
 
   it("typed prevent constrains to action keys", () => {

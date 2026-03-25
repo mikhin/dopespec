@@ -15,12 +15,12 @@
 
 - [x] Schema as TypeScript builder API — IDE autocomplete, linting, type checking for free
 - [x] Single DSL — models, transitions, constraints, scenarios in one file per model
-- [ ] DDD built in — model()=Aggregate, props=VO, transitions=Events, constraints=Invariants, actions=Commands
+- [x] DDD built in — model()=Aggregate, props=VO, transitions=Events, constraints=Invariants, actions=Commands
 - [ ] Bounded Contexts — group models by domain, limited interface across boundaries
-- [ ] BDD auto-generated — each transition/constraint → test case, zero manual test writing
+- [x] BDD auto-generated — each transition/constraint → test case, zero manual test writing
 - [x] Strict compile-time (invalid props/states don't compile) + runtime (guards) + tests (scenarios)
 - [x] Lifecycle as core concept — human-friendly term for state machines
-- [ ] Contract programming — schema = contract between modules
+- [x] Contract programming — schema = contract between modules
 - [x] Runtime transition guards from schema
 - [x] Rule versioning — schema in git
 - [ ] Edits sync to code — re-generate
@@ -28,16 +28,16 @@
 
 ## Codegen (MVP)
 
-- [ ] TypeScript discriminated unions from props/lifecycle states
-- [ ] Transition functions with runtime guards
-- [ ] Domain event types per transition (DDD: transitions=Events)
-- [ ] Command types per action (DDD: actions=Commands)
-- [ ] Invariant validation per constraint (DDD: constraints=Invariants)
-- [ ] Service orchestrator skeletons per action
-- [ ] Unit tests in Given/When/Then style from scenarios (BDD)
-- [ ] E2E test stubs (skeleton with TODOs)
-- [ ] Zod validation from constraints
-- [ ] Mermaid diagrams from transitions
+- [x] TypeScript discriminated unions from props/lifecycle states
+- [x] Transition functions with runtime guards
+- [x] Domain event types per transition (DDD: transitions=Events)
+- [x] Command types per action (DDD: actions=Commands)
+- [x] Invariant validation per constraint (DDD: constraints=Invariants)
+- [x] Service orchestrator skeletons per action
+- [x] Unit tests in Given/When/Then style from scenarios (BDD)
+- [x] E2E test stubs (skeleton with TODOs)
+- [x] Zod validation from constraints
+- [x] Mermaid diagrams from transitions
 
 ## ESLint Plugin (future, not MVP)
 
