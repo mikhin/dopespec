@@ -60,9 +60,11 @@ export const capitalize = (s: string): string =>
   s.charAt(0).toUpperCase() + s.slice(1);
 
 /**
- * Derive the id field name for a relation key. Uses key as-is, no depluralization.
+ * Derive the id field name for a relation key. Appends Id/Ids to key as-is.
  * belongsTo "customer" → "customerId"
- * hasMany "items" → "itemsIds"
+ * hasMany "item" → "itemIds"
+ *
+ * Use singular relation keys for clean output (e.g. `item: hasMany(Pet)` not `items`).
  */
 export const relationIdField = (
   key: string,
@@ -165,39 +167,40 @@ export const getLifecycleProp = (
  *
  * Throws on block-body arrows `(ctx) => { ... }` and non-arrow functions.
  *
- * Known limitation: property names or string literals containing "=>" before the
- * actual arrow will break extraction (e.g. `ctx["=>"]`). This is unlikely in
- * domain model guards but not prevented.
- *
  * Relies on Function.prototype.toString() returning source text, which is
  * guaranteed by the ECMAScript spec for user-defined functions (not built-ins).
  */
+
+// Matches `(ctx) =>` or `ctx =>` at the start, capturing param name.
+// Two explicit alternatives avoid backtracking from optional parens + whitespace.
+const GUARD_ARROW_RE = /^(?:\((\w+)\)|(\w+))\s*=>\s*/;
+
 export const guardToSource = (
   guard: (ctx: Record<string, unknown>) => unknown,
 ): string => {
   try {
     const src = guard.toString();
-    const arrowIdx = src.indexOf("=>");
+    const match = GUARD_ARROW_RE.exec(src);
 
-    if (arrowIdx === -1) {
+    if (!match) {
       throw guardParseError(
-        "Guard must be an arrow function. Got: " + src.slice(0, 80),
+        "Guard must be a single-parameter arrow function: (ctx) => expr. " +
+          "Got: " +
+          src.slice(0, 80),
       );
     }
 
-    // Enforce that the guard uses "ctx" as its parameter name.
-    // This ensures generated code references ctx consistently.
-    const paramSection = src.slice(0, arrowIdx).trim();
-    const paramMatch = /^\(?\s*(\w+)\s*\)?$/.exec(paramSection);
+    const paramName = match[1] ?? match[2];
 
-    if (!paramMatch || paramMatch[1] !== "ctx") {
+    if (paramName !== "ctx") {
       throw guardParseError(
-        `Guard parameter must be named "ctx". Got: "${paramSection}". ` +
+        `Guard parameter must be named "ctx": (ctx) => expr. ` +
+          `Got: "${paramName}". ` +
           "Destructured or renamed parameters are not supported by codegen.",
       );
     }
 
-    const body = src.slice(arrowIdx + 2).trim();
+    const body = src.slice(match[0].length).trim();
 
     if (!body.includes("ctx")) {
       throw guardParseError(
@@ -222,9 +225,7 @@ export const guardToSource = (
 
     const message = err instanceof Error ? err.message : String(err);
 
-    throw guardParseError(
-      `Failed to serialize guard function: ${message}`,
-    );
+    throw guardParseError(`Failed to serialize guard function: ${message}`);
   }
 };
 

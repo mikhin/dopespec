@@ -92,7 +92,7 @@ const Order = model("Order", {
   },
   relations: {
     customer: belongsTo(Customer),
-    items: hasMany(Pet),
+    item: hasMany(Pet),
   },
   transitions: ({ from }) => ({
     cancel: from(orderStates[0]).to(orderStates[4]),

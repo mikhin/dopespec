@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
@@ -69,7 +72,14 @@ describe("generateTypes", () => {
     const output = generateTypes(Order as ModelDef);
 
     expect(output).toContain("customerId: string; // belongsTo Customer");
-    expect(output).toContain("itemsIds: string[]; // hasMany Pet");
+    expect(output).toContain("itemIds: string[]; // hasMany Pet");
+  });
+
+  it("documents singular relation keys for clean output", () => {
+    // Verify pet-store uses singular key "item" not "items"
+    const output = generateTypes(Order as ModelDef);
+
+    expect(output).not.toContain("itemsIds");
   });
 
   it("returns empty string for minimal model", () => {
@@ -165,7 +175,6 @@ describe("generateCommands", () => {
     const output = generateCommands(EmptyFields as ModelDef);
 
     expect(output).toContain("payload: {}");
-
   });
 
   it("returns empty string for minimal model", () => {
@@ -260,7 +269,7 @@ describe("generateTests", () => {
     const output = generateTests(Order as ModelDef);
 
     expect(output).toContain("customerId: ''");
-    expect(output).toContain("itemsIds: []");
+    expect(output).toContain("itemIds: []");
     expect(output).toContain("TODO: replace with real test data");
   });
 
@@ -319,7 +328,7 @@ describe("generateZod", () => {
     const output = generateZod(Order as ModelDef);
 
     expect(output).toContain("customerId: z.string()");
-    expect(output).toContain("itemsIds: z.array(z.string())");
+    expect(output).toContain("itemIds: z.array(z.string())");
   });
 
   it("returns empty string for minimal model", () => {
@@ -411,7 +420,7 @@ describe("guardToSource", () => {
     const guard = ({ status }: Ctx) => status === "active";
 
     expect(() => guardToSource(guard as (ctx: Ctx) => unknown)).toThrow(
-      'Guard parameter must be named "ctx"',
+      "Guard must be a single-parameter arrow function",
     );
   });
 
@@ -419,7 +428,7 @@ describe("guardToSource", () => {
     const guard = (state: Ctx) => (state["total"] as number) > 0;
 
     expect(() => guardToSource(guard as (ctx: Ctx) => unknown)).toThrow(
-      'Guard parameter must be named "ctx"',
+      'Guard parameter must be named "ctx": (ctx) => expr',
     );
   });
 
@@ -472,7 +481,9 @@ describe("guardToSource", () => {
       return (ctx["total"] as number) > 0;
     };
 
-    expect(() => guardToSource(guard)).toThrow("Guard must be an arrow");
+    expect(() => guardToSource(guard)).toThrow(
+      "Guard must be a single-parameter arrow function",
+    );
   });
 
   it("throws when body does not reference ctx (minification detection)", () => {
@@ -485,9 +496,7 @@ describe("guardToSource", () => {
     expect(() => guardToSource(guard)).toThrow("does not reference 'ctx'");
   });
 
-  it("handles property access containing => in value (first => is the arrow)", () => {
-    // When => appears inside a string literal in the body, indexOf("=>")
-    // still finds the real arrow first because it precedes the body.
+  it("handles property access containing => in body", () => {
     const guard = {
       toString: () => '(ctx) => ctx["=>"] === true',
     } as unknown as (ctx: Ctx) => unknown;
@@ -495,17 +504,6 @@ describe("guardToSource", () => {
     const result = guardToSource(guard);
 
     expect(result).toBe('ctx["=>"] === true');
-  });
-
-  it("known limitation: => before the arrow breaks extraction", () => {
-    // If => appears in a default param before the real arrow, indexOf
-    // finds the wrong one. Unlikely in guards but documented.
-    const guard = {
-      toString: () => '(ctx = "=>") => ctx.total > 0',
-    } as unknown as (ctx: Ctx) => unknown;
-
-    // Misparses: param section is '(ctx = "', not '(ctx = "=>")'
-    expect(() => guardToSource(guard)).toThrow();
   });
 });
 
@@ -517,12 +515,8 @@ describe("relationIdField", () => {
   });
 
   it("hasMany appends Ids to key as-is", () => {
-    expect(relationIdField("items", "hasMany")).toBe("itemsIds");
-  });
-
-  it("hasMany does not depluralize", () => {
-    expect(relationIdField("staff", "hasMany")).toBe("staffIds");
-    expect(relationIdField("addresses", "hasMany")).toBe("addressesIds");
+    expect(relationIdField("item", "hasMany")).toBe("itemIds");
+    expect(relationIdField("lineItem", "hasMany")).toBe("lineItemIds");
   });
 });
 
@@ -579,7 +573,7 @@ describe("generated code validity", () => {
     const valid = {
       createdAt: new Date(),
       customerId: "cust-123",
-      itemsIds: ["pet-1", "pet-2"],
+      itemIds: ["pet-1", "pet-2"],
       status: "pending",
       total: 100,
     };
@@ -594,5 +588,45 @@ describe("generated code validity", () => {
     };
 
     expect(() => OrderSchema.parse(invalid)).toThrow();
+  });
+
+  it("multi-file imports resolve: types + transitions as separate files", () => {
+    const typesSource = generateTypes(Order as ModelDef);
+    const transitionsSource = generateTransitions(Order as ModelDef);
+
+    const dir = mkdtempSync(join(tmpdir(), "dopespec-codegen-"));
+
+    try {
+      writeFileSync(join(dir, "package.json"), '{"type":"module"}');
+      writeFileSync(join(dir, "order.types.ts"), typesSource);
+      writeFileSync(join(dir, "order.transitions.ts"), transitionsSource);
+
+      const program = ts.createProgram(
+        [join(dir, "order.types.ts"), join(dir, "order.transitions.ts")],
+        {
+          module: ts.ModuleKind.NodeNext,
+          moduleResolution: ts.ModuleResolutionKind.NodeNext,
+          strict: true,
+          target: ts.ScriptTarget.ES2022,
+        },
+      );
+
+      const diagnostics = ts.getPreEmitDiagnostics(program);
+      const errors = diagnostics.filter(
+        (d) => d.category === ts.DiagnosticCategory.Error,
+      );
+
+      if (errors.length > 0) {
+        const messages = errors.map((d) =>
+          ts.flattenDiagnosticMessageText(d.messageText, "\n"),
+        );
+
+        expect(messages).toEqual([]);
+      }
+
+      expect(errors).toHaveLength(0);
+    } finally {
+      rmSync(dir, { recursive: true });
+    }
   });
 });
