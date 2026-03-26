@@ -146,12 +146,10 @@ action<{ name: string }>({ name: number() });
 
 // --- decisions() with model-linked props must reject invalid values ---
 
-const _petModel = model("TypeTestPet", {
-  props: { species: oneOf(["dog", "cat"] as const) },
-});
+const _petProps = { species: oneOf(["dog", "cat"] as const) } as const;
 
 decisions("TypeTestDecision", {
-  inputs: { species: _petModel.props!.species },
+  inputs: { species: _petProps.species },
   outputs: { fee: number() },
   rules: [
     // @ts-expect-error: 'typo' is not 'dog' | 'cat'

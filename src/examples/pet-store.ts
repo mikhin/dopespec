@@ -37,6 +37,15 @@ const Customer = model("Customer", {
 
 const petStates = lifecycle.states("available", "reserved", "sold");
 
+const petProps = {
+  name: string(),
+  nickname: optional(string()),
+  price: number(),
+  species: oneOf(["dog", "cat", "bird", "fish"] as const),
+  status: lifecycle(petStates),
+  vaccinated: boolean(),
+} as const;
+
 const Pet = model("Pet", {
   actions: {
     updatePrice: action<{ price: number }>({ price: number() }),
@@ -47,14 +56,7 @@ const Pet = model("Pet", {
       .when((ctx) => ctx.nickname !== undefined && ctx.nickname.length > 20)
       .prevent("vaccinate"),
   }),
-  props: {
-    name: string(),
-    nickname: optional(string()),
-    price: number(),
-    species: oneOf(["dog", "cat", "bird", "fish"] as const),
-    status: lifecycle(petStates),
-    vaccinated: boolean(),
-  },
+  props: petProps,
   transitions: ({ from }) => ({
     release: from(petStates.reserved)
       .to(petStates.available)
@@ -137,7 +139,7 @@ const CreditTier = decisions("CreditTier", {
 // Using "typo" in when would be a compile error.
 
 const PetAdoptionFee = decisions("PetAdoptionFee", {
-  inputs: { species: Pet.props!.species, vaccinated: Pet.props!.vaccinated },
+  inputs: { species: petProps.species, vaccinated: petProps.vaccinated },
   outputs: { fee: number() },
   rules: [
     { then: { fee: 50 }, when: { species: "dog", vaccinated: true } },
