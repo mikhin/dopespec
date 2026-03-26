@@ -26,14 +26,12 @@ export type ModelDef<
     string,
     ConstraintDefBase
   >,
-> = ModelRef & {
-  readonly actions?: A;
-  readonly constraints?: StripConstraintMethods<C>;
-  readonly name: Name;
-  readonly props?: P;
-  readonly relations?: R;
-  readonly transitions?: StripTransitionMethods<T>;
-};
+> = IfProvided<"actions", A> &
+  IfProvided<"constraints", StripConstraintMethods<C>> &
+  IfProvided<"props", P> &
+  IfProvided<"relations", R> &
+  IfProvided<"transitions", StripTransitionMethods<T>> &
+  ModelRef & { readonly name: Name };
 
 /**
  * Extracts the state union from lifecycle() props only (not oneOf).
@@ -57,11 +55,21 @@ export type TransitionHelpers<Ctx, States extends string> = {
   };
 };
 
-// --- Builder helpers (passed to callbacks) ---
-
 type ConstraintDefBase = {
   readonly kind: "constraint";
 };
+
+// --- Builder helpers (passed to callbacks) ---
+
+/**
+ * Makes field K required when V has concrete keys (user-provided),
+ * optional when V has a string index signature (unparameterized default).
+ * Depends on ModelDef defaults being Record<string, …> and model() defaults
+ * being Record<string, never> — both have `string` as keyof.
+ */
+type IfProvided<K extends string, V> = string extends keyof V
+  ? { readonly [k in K]?: V }
+  : { readonly [k in K]: V };
 
 type IsUnion<T> = [T] extends [UnionToIntersection<T>] ? false : true;
 

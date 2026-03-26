@@ -3,6 +3,8 @@
  * Each @ts-expect-error comment verifies that the following line is rejected.
  * If tsc --noEmit passes, all expected errors are confirmed.
  */
+import type { ModelDef } from "../schema/index.js";
+
 import {
   action,
   belongsTo,
@@ -156,3 +158,28 @@ decisions("TypeTestDecision", {
     { then: { fee: 0 }, when: { species: "typo" } },
   ],
 });
+
+// --- IfProvided: model() return type makes provided fields required ---
+
+const _withProps = model("WithProps", {
+  actions: { go: action<{ x: string }>({ x: string() }) },
+  props: { count: number() },
+});
+
+// props and actions are required — direct access compiles without ?.
+_withProps.props.count.kind satisfies "number";
+_withProps.actions.go.kind satisfies "action";
+
+const _withoutProps = model("WithoutProps", {});
+
+// @ts-expect-error: props is optional when not provided — Object is possibly 'undefined'
+_withoutProps.props.toString();
+
+// @ts-expect-error: actions is optional when not provided — Object is possibly 'undefined'
+_withoutProps.actions.toString();
+
+// Unparameterized ModelDef — all fields remain optional (generators use this)
+declare const _wide: ModelDef;
+
+// @ts-expect-error: props is optional on unparameterized ModelDef
+_wide.props.toString();

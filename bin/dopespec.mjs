@@ -20,7 +20,7 @@ try {
   // execFileSync throws on non-zero exit — forward the child's exit code
   const status =
     error && typeof error === "object" && "status" in error
-      ? error.status ?? 1
+      ? (error.status ?? 1)
       : 1;
   process.exit(status);
 }
