@@ -16,21 +16,19 @@
 - Branded ModelRef — prevents structural spoofing in relations
 - action() accepts optional fields metadata for codegen: action<P>({ field: string() })
 - Guards must use `ctx` as parameter name — codegen depends on Function.toString()
-- Generated files: flat directory, .js extensions, ${modelName}.\*.ts pattern
+- Generated files: flat directory, .js extensions, ${modelName}.*.ts pattern
 - No classes, no external runtime deps
-
-## Pending Fixes (before next feature)
-
-1. Remove isOptional from src/schema/index.ts public exports (codegen imports directly from props.ts)
-2. Add scenario to Pet release transition
+- Three primitives planned: model() (built), decisions() (next), cross-model (deferred). See docs/three-primitives.md
+- `interaction()` rejected as separate primitive — subsumed by `policy()` with optional rules
 
 ## Next Items
 
-1. Generated/user code separation — generated/ always overwritten, src/ user code imports from generated/
-2. src/index.ts entry point — package public API
-3. End-to-end proof — run all 10 generators on pet-store, compile result
-4. CLI (session 3) — npx dopespec generate
-5. Self-hosting — describe dopespec models in its own format
+1. `decisions()` — schema builder + codegen (evaluate, tests, markdown table)
+2. Generated/user code separation — generated/ always overwritten, src/ user code imports from generated/
+3. src/index.ts entry point — package public API
+4. End-to-end proof — run all 10 generators on pet-store, compile result
+5. CLI — npx dopespec generate
+6. Self-hosting — describe dopespec models in its own format
 
 ## Stats
 

@@ -1,5 +1,11 @@
 # dopespec — Schema-first domain modeling ("Prisma for business logic")
 
+## Honest Scope
+
+dopespec covers **entity state + transitions + access control + cross-model invariants**.
+
+It does NOT cover async workflows, database queries in guards, side effects, or time-based constraints. See `docs/three-primitives.md` for details.
+
 ## Core Schema Concepts
 
 - [x] Models — aggregates (e.g. Order, Pet, Customer)
@@ -10,6 +16,7 @@
 - [x] Zero string literals — strings only in initial definition (as const), everywhere else typed references. Typo = compile error.
 - [x] Relations — has many, belongs to (Prisma-like)
 - [x] Scenarios — typed inline per transition: .scenario(givenProps, expectedState), compile-time checked
+- [ ] Decision tables — `decisions()` primitive: inputs → outputs → evaluate function + tests + markdown table
 
 ## Design Principles
 
@@ -28,6 +35,8 @@
 
 ## Codegen (MVP)
 
+### model() generators — ✅ all done
+
 - [x] TypeScript discriminated unions from props/lifecycle states
 - [x] Transition functions with runtime guards
 - [x] Domain event types per transition (DDD: transitions=Events)
@@ -38,6 +47,18 @@
 - [x] E2E test stubs (skeleton with TODOs)
 - [x] Zod validation from constraints
 - [x] Mermaid diagrams from transitions
+
+### decisions() generators — next milestone
+
+- [ ] Evaluate function (pure function: inputs → outputs)
+- [ ] Unit tests (one test per rule, Given/When/Then)
+- [ ] Markdown decision table (for non-tech readers)
+
+### Cross-model generators — deferred
+
+- [ ] Policy validator or extended constraint validation
+- [ ] Integration tests from cross-model scenarios
+- [ ] Interaction diagrams
 
 ## ESLint Plugin (future, not MVP)
 
