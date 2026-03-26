@@ -200,7 +200,15 @@ export const guardToSource = (
       );
     }
 
-    const body = src.slice(match[0].length).trim();
+    const rawBody = src.slice(match[0].length).trim();
+
+    // Normalize operator spacing in guard bodies.
+    // Function.toString() preserves original formatting which may lack spaces.
+    // Insert spaces around operators, then collapse any duplicate spaces.
+    const body = rawBody
+      .replace(/(\w)([><=!]=?=?)(\w)/g, "$1 $2 $3")
+      .replace(/(\w)(&&|\|\|)(\w)/g, "$1 $2 $3")
+      .replace(/ {2,}/g, " ");
 
     if (!body.includes("ctx")) {
       throw guardParseError(

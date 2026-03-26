@@ -4,7 +4,7 @@ import sonarjs from "eslint-plugin-sonarjs";
 import perfectionist from "eslint-plugin-perfectionist";
 
 export default tseslint.config(
-  { ignores: ["dist", "node_modules"] },
+  { ignores: ["dist", "node_modules", "**/generated"] },
 
   // Base configs
   js.configs.recommended,

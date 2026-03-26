@@ -22,7 +22,7 @@ export const generateOrchestrators = (model: ModelDef): string => {
     const payloadType = fieldsToTSType(actionDef.fields);
 
     lines.push(
-      `export function ${fnName}(ctx: ${propsType}, payload: ${payloadType}): ${propsType} {`,
+      `export function ${fnName}(ctx: ${propsType}, _payload: ${payloadType}): ${propsType} {`,
     );
     lines.push(`  // TODO: implement ${name}`);
     lines.push(`  return ctx;`);

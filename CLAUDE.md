@@ -92,7 +92,7 @@ Internal (used via model() callbacks, not exported from index): `from`, `rule`, 
 - `from()`/`rule()` are typed factories provided via model() callbacks — ctx, states, action keys checked at compile time
 - Branded types: `ModelRef` (unique symbol) ensures `hasMany`/`belongsTo` only accept model outputs or `ref()` calls
 - No classes — closures and functions
-- No external runtime dependencies
+- No external runtime dependencies for generated code; CLI uses tsx for TypeScript schema loading
 - Vitest for testing
 - Single file per model in schema — contains props, transitions, constraints, scenarios
 - DDD: model()=Aggregate, props=Value Objects, transitions=Domain Events, constraints=Invariants, actions=Commands

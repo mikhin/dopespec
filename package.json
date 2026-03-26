@@ -4,7 +4,11 @@
   "description": "",
   "type": "module",
   "main": "index.js",
+  "bin": {
+    "dopespec": "./bin/dopespec.mjs"
+  },
   "scripts": {
+    "generate": "tsx src/cli/generate.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
@@ -15,6 +19,9 @@
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.30.3",
+  "dependencies": {
+    "tsx": "^4.19.0"
+  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^25.5.0",

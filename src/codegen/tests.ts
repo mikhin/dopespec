@@ -170,9 +170,7 @@ export const generateTests = (model: ModelDef): string => {
 
   lines.push(`import { describe, it, expect } from 'vitest';`);
   // Import types for satisfies assertions
-  lines.push(
-    `import type { ${propsType} } from './${modelName}.types.js';`,
-  );
+  lines.push(`import type { ${propsType} } from './${modelName}.types.js';`);
   // Convention: generated transition module lives at ./${modelName}.transitions.js
   lines.push(
     `import { ${transitionFnNames.join(", ")} } from './${modelName}.transitions.js';`,

@@ -31,7 +31,7 @@ It does NOT cover async workflows, database queries in guards, side effects, or 
 - [x] Contract programming — schema = contract between modules
 - [x] Runtime transition guards from schema
 - [x] Rule versioning — schema in git
-- [ ] Edits sync to code — re-generate
+- [x] Edits sync to code — re-generate (`pnpm generate generate <schema>`)
 - [ ] "Prisma for business logic" — confirmed market gap, positioning statement
 
 ## Codegen (MVP)
@@ -112,7 +112,7 @@ It does NOT cover async workflows, database queries in guards, side effects, or 
 - [ ] Self-hosting — generator built with itself, proof that product works
 - [x] v0 generator written by hand
 - [x] E2E proof — all 13 generators on pet-store compiled with strict tsc (test writes to temp dir, compiles, cleans up)
-- [ ] CLI writes generated files to disk (`npx dopespec generate` → output directory)
+- [x] CLI writes generated files to disk (`npx dopespec generate` → output directory)
 - [ ] Generator's own models described in its own schema
 - [ ] v0 generates v1, v1 generates v2
 - [ ] First external customer adopts CLI as dev dependency, runs codegen in their repo

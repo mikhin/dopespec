@@ -57,7 +57,7 @@ const modelGenerators: {
   { ext: "commands.ts", fn: generateCommands, ts: true },
   { ext: "invariants.ts", fn: generateInvariants, ts: true },
   { ext: "orchestrators.ts", fn: generateOrchestrators, ts: true },
-  { ext: "tests.ts", fn: generateTests, ts: true },
+  { ext: "test.ts", fn: generateTests, ts: true },
   { ext: "e2e.ts", fn: generateE2EStubs, ts: true },
   { ext: "zod.ts", fn: generateZod, ts: true },
   { ext: "mermaid.md", fn: generateMermaid, ts: false },
@@ -70,7 +70,7 @@ const decisionGenerators: {
   ts: boolean;
 }[] = [
   { ext: "evaluate.ts", fn: generateDecisionEvaluate, ts: true },
-  { ext: "tests.ts", fn: generateDecisionTests, ts: true },
+  { ext: "test.ts", fn: generateDecisionTests, ts: true },
   { ext: "table.md", fn: generateDecisionTable, ts: false },
 ];
 
@@ -89,7 +89,7 @@ describe("e2e-proof: pet-store full generation + tsc compile", () => {
   ];
 
   // Customer has no scenarios or constraints, so these are legitimately empty.
-  const emptyForCustomer = ["tests.ts", "invariants.ts"];
+  const emptyForCustomer = ["test.ts", "invariants.ts"];
 
   it("every model generator produces expected output", () => {
     for (const m of models) {
@@ -99,7 +99,10 @@ describe("e2e-proof: pet-store full generation + tsc compile", () => {
 
         if (alwaysNonEmpty.includes(gen.ext)) {
           expect(content, `${filename} should not be empty`).toBeTruthy();
-        } else if (m.name === "customer" && emptyForCustomer.includes(gen.ext)) {
+        } else if (
+          m.name === "customer" &&
+          emptyForCustomer.includes(gen.ext)
+        ) {
           expect(content, `${filename} expected empty`).toBe("");
         }
       }
