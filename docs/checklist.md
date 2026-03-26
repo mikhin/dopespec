@@ -13,7 +13,7 @@ It does NOT cover async workflows, database queries in guards, side effects, or 
 - [x] Actions — commands (e.g. placeOrder, adopt, return)
 - [x] Transitions — lifecycle states with guards (e.g. pending→paid→shipped)
 - [x] Constraints — executable guards on props/transitions, no free-text strings
-- [x] Zero string literals — strings only in initial definition (as const), everywhere else typed references. Typo = compile error.
+- [x] Zero string literals — strings only in initial definition (as const), everywhere else typed references. Typo = compile error. Codegen resolves closure refs (e.g. `orderStates.cancelled`) to literals at generation time.
 - [x] Relations — has many, belongs to (Prisma-like)
 - [x] Scenarios — typed inline per transition: .scenario(givenProps, expectedState), compile-time checked
 - [x] Decision tables — `decisions()` primitive: inputs → outputs → evaluate function + tests + markdown table
@@ -111,6 +111,7 @@ It does NOT cover async workflows, database queries in guards, side effects, or 
 
 - [ ] Self-hosting — generator built with itself, proof that product works
 - [x] v0 generator written by hand
+- [x] E2E proof — all 13 generators on pet-store, output written to files, compiled with strict tsc
 - [ ] Generator's own models described in its own schema
 - [ ] v0 generates v1, v1 generates v2
 - [ ] First external customer adopts CLI as dev dependency, runs codegen in their repo
