@@ -111,7 +111,8 @@ It does NOT cover async workflows, database queries in guards, side effects, or 
 
 - [ ] Self-hosting — generator built with itself, proof that product works
 - [x] v0 generator written by hand
-- [x] E2E proof — all 13 generators on pet-store, output written to files, compiled with strict tsc
+- [x] E2E proof — all 13 generators on pet-store compiled with strict tsc (test writes to temp dir, compiles, cleans up)
+- [ ] CLI writes generated files to disk (`npx dopespec generate` → output directory)
 - [ ] Generator's own models described in its own schema
 - [ ] v0 generates v1, v1 generates v2
 - [ ] First external customer adopts CLI as dev dependency, runs codegen in their repo
