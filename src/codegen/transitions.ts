@@ -5,6 +5,7 @@ import {
   getLifecycleProp,
   getTransitions,
   guardToSource,
+  resolveGuardBody,
 } from "./utils.js";
 
 /** Generate transition functions with runtime state checks and guards. */
@@ -38,7 +39,8 @@ export const generateTransitions = (model: ModelDef): string => {
     }
 
     if (transition.guard) {
-      const guardBody = guardToSource(transition.guard);
+      const rawBody = guardToSource(transition.guard);
+      const guardBody = resolveGuardBody(transition.guard, rawBody, model);
 
       lines.push(`  if (!(${guardBody})) {`);
       lines.push(`    throw new Error('Guard failed for transition ${name}');`);

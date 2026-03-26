@@ -1,43 +1,85 @@
 import type { ModelDef } from "../schema/model.js";
+import type { PropDef } from "../schema/props.js";
 import type { Scenario, TransitionData } from "../schema/transitions.js";
 
+import { isOptional } from "../schema/props.js";
 import {
   capitalize,
+  defaultValueForProp,
   getLifecycleProp,
   getRelations,
   getTransitions,
   relationIdField,
+  valueToSource,
 } from "./utils.js";
 
-const formatCtxSetup = (
-  givenStr: string,
-  lifecycleKey: string | undefined,
-  fromState: string,
-  relationDefaults: string,
-): string => {
-  const stateAssign = lifecycleKey ? `, ${lifecycleKey}: '${fromState}'` : "";
+/** Shared context threaded through all test-formatting helpers. */
+type TestGenCtx = {
+  readonly lifecycleKey: string | undefined;
+  readonly propEntries: [string, PropDef][];
+  readonly propsType: string;
+  readonly relationEntries: [string, string][];
+  readonly typeName: string;
+};
 
-  return `    const ctx = { ...${givenStr}${stateAssign}${relationDefaults} };`;
+/**
+ * Build a complete ctx object literal by merging prop defaults, relation
+ * defaults, and scenario-given values at codegen time. This avoids duplicate
+ * keys (which strict tsc warns about) and uses `satisfies` to prevent
+ * string-literal widening while still catching missing props.
+ */
+const buildCtxLiteral = (
+  scenario: Scenario,
+  fromState: string,
+  tg: TestGenCtx,
+): string => {
+  const parts: string[] = [];
+
+  // Start with prop defaults, overriding with scenario-given values
+  for (const [key, prop] of tg.propEntries) {
+    if (key === tg.lifecycleKey) continue; // lifecycle handled separately
+
+    const scenarioValue = (scenario.given as Record<string, unknown>)[key];
+
+    if (scenarioValue !== undefined) {
+      parts.push(`${key}: ${valueToSource(scenarioValue)}`);
+    } else if (!isOptional(prop)) {
+      parts.push(`${key}: ${defaultValueForProp(prop)}`);
+    }
+  }
+
+  // Lifecycle state
+  if (tg.lifecycleKey) {
+    parts.push(`${tg.lifecycleKey}: '${fromState}'`);
+  }
+
+  // Relation defaults
+  for (const [fieldName, defaultValue] of tg.relationEntries) {
+    parts.push(`${fieldName}: ${defaultValue}`);
+  }
+
+  return `{ ${parts.join(", ")} } satisfies ${tg.propsType}`;
 };
 
 const formatSuccessCase = (
   name: string,
-  typeName: string,
-  givenStr: string,
-  expectedState: string,
-  lifecycleKey: string | undefined,
-  fromState: string,
-  relationDefaults: string,
+  scenario: Scenario,
+  transition: TransitionData,
+  tg: TestGenCtx,
 ): string[] => {
-  const fnName = `${typeName}${capitalize(name)}`;
+  const fnName = `${tg.typeName}${capitalize(name)}`;
+  const ctxLiteral = buildCtxLiteral(scenario, transition.from, tg);
+  const givenStr = JSON.stringify(scenario.given);
   const lines = [
-    `  it('given ${givenStr}, when ${name}, then ${lifecycleKey ?? "transition"} = ${expectedState}', () => {`,
-    formatCtxSetup(givenStr, lifecycleKey, fromState, relationDefaults),
+    `  it('given ${givenStr}, when ${name}, then ${tg.lifecycleKey ?? "transition"} = ${scenario.expected}', () => {`,
+    `    const ctx = ${ctxLiteral};`,
     `    const result = ${fnName}(ctx);`,
   ];
 
-  if (lifecycleKey) {
-    lines.push(`    expect(result.${lifecycleKey}).toBe('${expectedState}');`);
+  if (tg.lifecycleKey) {
+    lines.push(
+      `    expect(result.${tg.lifecycleKey}).toBe('${scenario.expected}');`,
+    );
   } else {
     lines.push(`    expect(result).toBeDefined();`);
   }
@@ -49,18 +91,17 @@ const formatSuccessCase = (
 
 const formatFailureCase = (
   name: string,
-  typeName: string,
-  givenStr: string,
-  expectedState: string,
-  lifecycleKey: string | undefined,
-  fromState: string,
-  relationDefaults: string,
+  scenario: Scenario,
+  transition: TransitionData,
+  tg: TestGenCtx,
 ): string[] => {
-  const fnName = `${typeName}${capitalize(name)}`;
+  const fnName = `${tg.typeName}${capitalize(name)}`;
+  const ctxLiteral = buildCtxLiteral(scenario, transition.from, tg);
+  const givenStr = JSON.stringify(scenario.given);
 
   return [
-    `  it('given ${givenStr}, when ${name}, then stays ${expectedState}', () => {`,
-    formatCtxSetup(givenStr, lifecycleKey, fromState, relationDefaults),
+    `  it('given ${givenStr}, when ${name}, then stays ${scenario.expected}', () => {`,
+    `    const ctx = ${ctxLiteral};`,
     `    expect(() => ${fnName}(ctx)).toThrow();`,
     `  });`,
   ];
@@ -68,34 +109,15 @@ const formatFailureCase = (
 
 const formatScenario = (
   name: string,
-  typeName: string,
   scenario: Scenario,
   transition: TransitionData,
-  lifecycleKey: string | undefined,
-  relationDefaults: string,
+  tg: TestGenCtx,
 ): string[] => {
-  const givenStr = JSON.stringify(scenario.given);
   const succeeds = scenario.expected === transition.to;
 
   return succeeds
-    ? formatSuccessCase(
-        name,
-        typeName,
-        givenStr,
-        scenario.expected,
-        lifecycleKey,
-        transition.from,
-        relationDefaults,
-      )
-    : formatFailureCase(
-        name,
-        typeName,
-        givenStr,
-        scenario.expected,
-        lifecycleKey,
-        transition.from,
-        relationDefaults,
-      );
+    ? formatSuccessCase(name, scenario, transition, tg)
+    : formatFailureCase(name, scenario, transition, tg);
 };
 
 /** Generate unit tests from transition scenarios in Given/When/Then style. */
@@ -106,24 +128,24 @@ export const generateTests = (model: ModelDef): string => {
 
   const typeName = capitalize(model.name);
   const modelName = model.name.toLowerCase();
+  const propsType = `${typeName}Props`;
   const lifecycleKey = getLifecycleProp(model)?.key;
 
-  // Build default values for relation fields in ctx setup
+  // Collect prop entries for building complete ctx objects
+  const propEntries: [string, PropDef][] = model.props
+    ? Object.entries(model.props)
+    : [];
+
+  // Build relation field entries
   const relations = getRelations(model);
-  const relationParts: string[] = [];
+  const relationEntries: [string, string][] = [];
 
   for (const [key, rel] of relations) {
     const fieldName = relationIdField(key, rel.kind);
     const defaultValue = rel.kind === "belongsTo" ? "''" : "[]";
 
-    relationParts.push(`${fieldName}: ${defaultValue}`);
+    relationEntries.push([fieldName, defaultValue]);
   }
-
-  const relationSuffix = relationParts.join(", ");
-  const relationDefaults =
-    relationParts.length > 0
-      ? `, ${relationSuffix} /* TODO: replace with real test data */`
-      : "";
 
   // Collect transition function names that have scenarios
   const transitionFnNames: string[] = [];
@@ -136,9 +158,21 @@ export const generateTests = (model: ModelDef): string => {
 
   if (transitionFnNames.length === 0) return "";
 
+  const tg: TestGenCtx = {
+    lifecycleKey,
+    propEntries,
+    propsType,
+    relationEntries,
+    typeName,
+  };
+
   const lines: string[] = [];
 
   lines.push(`import { describe, it, expect } from 'vitest';`);
+  // Import types for satisfies assertions
+  lines.push(
+    `import type { ${propsType} } from './${modelName}.types.js';`,
+  );
   // Convention: generated transition module lives at ./${modelName}.transitions.js
   lines.push(
     `import { ${transitionFnNames.join(", ")} } from './${modelName}.transitions.js';`,
@@ -150,16 +184,7 @@ export const generateTests = (model: ModelDef): string => {
     if (!transition.scenarios || transition.scenarios.length === 0) continue;
 
     for (const scenario of transition.scenarios) {
-      lines.push(
-        ...formatScenario(
-          name,
-          typeName,
-          scenario,
-          transition,
-          lifecycleKey,
-          relationDefaults,
-        ),
-      );
+      lines.push(...formatScenario(name, scenario, transition, tg));
       lines.push("");
     }
   }

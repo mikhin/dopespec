@@ -1,6 +1,11 @@
 import type { ModelDef } from "../schema/model.js";
 
-import { capitalize, getConstraints, guardToSource } from "./utils.js";
+import {
+  capitalize,
+  getConstraints,
+  guardToSource,
+  resolveGuardBody,
+} from "./utils.js";
 
 /** Generate invariant validation functions from a model's constraints. */
 export const generateInvariants = (model: ModelDef): string => {
@@ -36,7 +41,8 @@ export const generateInvariants = (model: ModelDef): string => {
     lines.push(`export function ${fnName}(ctx: ${propsType}): boolean {`);
 
     if (constraint.guard) {
-      const guardBody = guardToSource(constraint.guard);
+      const rawBody = guardToSource(constraint.guard);
+      const guardBody = resolveGuardBody(constraint.guard, rawBody, model);
 
       lines.push(`  // guard=true means violation, so invariant negates it`);
       lines.push(`  return !(${guardBody});`);

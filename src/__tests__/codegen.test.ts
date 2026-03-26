@@ -302,12 +302,11 @@ describe("generateTests", () => {
     expect(output).toContain("OrderPay(ctx)");
   });
 
-  it("includes relation field defaults in ctx setup with TODO", () => {
+  it("includes relation field defaults in ctx setup", () => {
     const output = generateTests(Order as ModelDef);
 
     expect(output).toContain("customerId: ''");
     expect(output).toContain("itemIds: []");
-    expect(output).toContain("TODO: replace with real test data");
   });
 
   it("generates tests for Pet scenarios", () => {

@@ -229,6 +229,109 @@ export const guardToSource = (
   }
 };
 
+/**
+ * Resolve external closure references in a guard body by probing the guard
+ * function with known enum/lifecycle values from the model.
+ *
+ * Guards like `(ctx) => ctx.status === orderStates.cancelled` serialize to a
+ * body containing `orderStates.cancelled` — an identifier that doesn't exist
+ * in generated code. This function detects such references and replaces them
+ * with their resolved string literal values.
+ *
+ * Works by finding `ctx.prop === ref` or `ref === ctx.prop` patterns, then
+ * calling the guard with each possible enum value until one matches.
+ *
+ * Limitations:
+ * - Only matches single-dot refs like `states.cancelled`, not deeper paths.
+ *   This is intentional — lifecycle.states() produces `{ name: name }` objects.
+ * - Only matches `===` / `==` operators. `!==` / `!=` are not matched by the
+ *   regex and will pass through unchanged (the external ref stays in the body).
+ */
+export const resolveGuardBody = (
+  guard: (ctx: Record<string, unknown>) => unknown,
+  body: string,
+  model: ModelDef,
+): string => {
+  // Match `ctx.prop === externalRef` — negative lookaheads prevent matching
+  // ctx.x === ctx.y, ctx.x === 'literal', and ctx.x === 42.
+  const CTX_EQ_REF =
+    /ctx\.(\w+)\s*={2,3}\s*(?!ctx\.|['"`\d])([a-zA-Z_$]\w*\.\w+)/g;
+  // Match `externalRef === ctx.prop` (reversed operand order).
+  // eslint-disable-next-line sonarjs/slow-regex -- input is a short guard body, not user-supplied
+  const REF_EQ_CTX = /(?!ctx\.)([a-zA-Z_$]\w*\.\w+)\s*={2,3}\s*ctx\.(\w+)/g;
+
+  // Build once, reuse across all tryResolve calls.
+  const defaults: Record<string, unknown> = {};
+
+  if (model.props) {
+    for (const [key, prop] of Object.entries(model.props)) {
+      switch (prop.kind) {
+        case "boolean":
+          defaults[key] = false;
+          break;
+
+        case "date":
+          defaults[key] = new Date(0);
+          break;
+
+        case "lifecycle":
+        // fall through
+
+        case "oneOf":
+          defaults[key] = (prop.values as readonly string[])[0] ?? "";
+          break;
+
+        case "number":
+          defaults[key] = 0;
+          break;
+
+        case "string":
+          defaults[key] = "";
+          break;
+      }
+    }
+  }
+
+  const tryResolve = (propName: string): string | undefined => {
+    const prop = model.props?.[propName];
+
+    if (!prop || (prop.kind !== "lifecycle" && prop.kind !== "oneOf"))
+      return undefined;
+
+    const values = prop.values as readonly string[];
+
+    for (const value of values) {
+      try {
+        if (guard({ ...defaults, [propName]: value }) === true) {
+          return `'${value}'`;
+        }
+      } catch {
+        /* guard may access missing props, skip */
+      }
+    }
+
+    return undefined;
+  };
+
+  let resolved = body;
+
+  // ctx.prop === externalRef
+  resolved = resolved.replace(CTX_EQ_REF, (match, propName, refStr) => {
+    const value = tryResolve(propName as string);
+
+    return value ? match.replace(refStr as string, value) : match;
+  });
+
+  // externalRef === ctx.prop
+  resolved = resolved.replace(REF_EQ_CTX, (match, refStr, propName) => {
+    const value = tryResolve(propName as string);
+
+    return value ? match.replace(refStr as string, value) : match;
+  });
+
+  return resolved;
+};
+
 /** Serialize a JS value to embeddable source code (string literal, number, boolean). */
 export const valueToSource = (value: unknown): string => {
   if (typeof value === "string")
