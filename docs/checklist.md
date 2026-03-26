@@ -16,7 +16,8 @@ It does NOT cover async workflows, database queries in guards, side effects, or 
 - [x] Zero string literals — strings only in initial definition (as const), everywhere else typed references. Typo = compile error.
 - [x] Relations — has many, belongs to (Prisma-like)
 - [x] Scenarios — typed inline per transition: .scenario(givenProps, expectedState), compile-time checked
-- [ ] Decision tables — `decisions()` primitive: inputs → outputs → evaluate function + tests + markdown table
+- [x] Decision tables — `decisions()` primitive: inputs → outputs → evaluate function + tests + markdown table
+- [x] Decisions linked to model props — decisions() inputs can reference model props for shared type safety
 
 ## Design Principles
 
@@ -48,11 +49,15 @@ It does NOT cover async workflows, database queries in guards, side effects, or 
 - [x] Zod validation from constraints
 - [x] Mermaid diagrams from transitions
 
-### decisions() generators — next milestone
+### decisions() generators — ✅ all done
 
-- [ ] Evaluate function (pure function: inputs → outputs)
-- [ ] Unit tests (one test per rule, Given/When/Then)
-- [ ] Markdown decision table (for non-tech readers)
+- [x] Evaluate function (pure function: inputs → outputs)
+- [x] Unit tests (one test per rule, Given/When/Then)
+- [x] Markdown decision table (for non-tech readers)
+
+### Pending improvements
+
+- [ ] ModelDef.props is always optional even when model was created with props — tighten with conditional type
 
 ### Cross-model generators — deferred
 

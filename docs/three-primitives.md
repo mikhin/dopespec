@@ -14,17 +14,19 @@ props, lifecycle, transitions, constraints, actions, relations, scenarios
 
 **DDD:** Aggregate, Value Objects, Commands, Events, Invariants
 
-## `decisions()` — pure function: inputs → outputs (NEXT)
+## `decisions()` — pure function: inputs → outputs ✅ BUILT
 
 ```
 inputs, outputs, rules (when → then)
 ```
 
-**Will generate:** evaluate function, unit tests, markdown table
+**Generates:** evaluate function, unit tests, markdown table
 
 **DDD:** Specification
 
 **Use cases:** permissions, access control, UI visibility matrices
+
+**Key design:** decisions() inputs can reference model props directly via shared const (e.g. `petProps.species`). This ensures type-level link — changing model props forces decision table review at compile time.
 
 ## `policy()` — rule between entities (DEFERRED)
 
@@ -87,7 +89,7 @@ dopespec covers: entity state + transitions + access control + cross-model invar
 
 ## Implementation order
 
-1. `model()` — ✅ done (10 generators, 122 tests)
-2. `decisions()` — next (schema builder + 3 generators: evaluate, tests, markdown table)
-3. Cross-model (`policy()` or extended constraints) — when a real use case demands it
+1. `model()` — ✅ done (10 generators)
+2. `decisions()` — ✅ done (schema builder + 3 generators: evaluate, tests, markdown table)
+3. Cross-model (`policy()` or extended constraints) — needed for Duler, design not decided
 4. `process()` / sagas — if multi-step workflows are ever needed

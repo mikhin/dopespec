@@ -116,7 +116,7 @@ output/
   order.mermaid.md      — Mermaid state diagram
 ```
 
-## Next Primitive: `decisions()`
+## `decisions()` — Decision Tables
 
 Decision table. Inputs → outputs. No lifecycle, no state machine. Pure function.
 
@@ -128,6 +128,26 @@ const CreditTier = decisions("CreditTier", {
     { when: { extraItemId: "tier_3" }, then: { credits: 5 } },
     { when: { extraItemId: "tier_5" }, then: { credits: 10 } },
     { when: { extraItemId: "tier_12" }, then: { credits: 30 } },
+  ],
+});
+```
+
+Inputs can reference model props via shared const for type safety:
+
+```typescript
+const petProps = {
+  species: oneOf(["dog", "cat", "bird", "fish"] as const),
+  vaccinated: boolean(),
+} as const;
+
+const Pet = model("Pet", { props: petProps, ... });
+
+const PetAdoptionFee = decisions("PetAdoptionFee", {
+  inputs: { species: petProps.species, vaccinated: petProps.vaccinated },
+  outputs: { fee: number() },
+  rules: [
+    { when: { species: "dog", vaccinated: true }, then: { fee: 50 } },
+    { when: { species: "typo" }, ... },  // compile error — "typo" not in oneOf
   ],
 });
 ```
