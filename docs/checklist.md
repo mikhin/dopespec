@@ -58,6 +58,7 @@ It does NOT cover async workflows, database queries in guards, side effects, or 
 ### Pending improvements
 
 - [ ] ModelDef.props is always optional even when model was created with props — tighten with conditional type
+- [ ] CLI generate-once for orchestrators and e2e-stubs (skip if file exists, warn on new handlers/transitions)
 
 ### Cross-model generators — deferred
 

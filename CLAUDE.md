@@ -112,9 +112,15 @@ output/
   order.invariants.js   — constraint validators (imports order.types.js)
   order.orchestrators.js — action handler skeletons (imports order.types.js)
   order.tests.js        — unit tests (imports order.transitions.js)
+  order.e2e-stubs.js    — e2e test skeletons with TODOs
   order.zod.js          — Zod validation schema
   order.mermaid.md      — Mermaid state diagram
 ```
+
+**Overwrite strategy:**
+- **Always overwrite:** types, transitions, events, commands, invariants, zod, mermaid, tests, evaluate, decision-tests, decision-table
+- **Generate-once (skip if exists):** orchestrators, e2e-stubs — these contain TODO placeholders that become user code
+- CLI warns when new actions/transitions are added but file exists: "file exists, new handler not added"
 
 ## `decisions()` — Decision Tables
 
