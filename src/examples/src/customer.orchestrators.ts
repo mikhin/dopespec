@@ -1,4 +1,4 @@
-import type { CustomerProps } from "./customer.types.js";
+import type { CustomerProps } from "../generated/customer.types.js";
 
 export function handleCustomerUpdateEmail(
   ctx: CustomerProps,

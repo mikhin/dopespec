@@ -1,4 +1,4 @@
-import type { OrderProps } from "./order.types.js";
+import type { OrderProps } from "../generated/order.types.js";
 
 export function handleOrderAddItem(
   ctx: OrderProps,

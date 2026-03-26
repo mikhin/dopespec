@@ -2,7 +2,7 @@
  * End-to-end proof: run ALL generators on every pet-store model/decision,
  * write output to a temp directory, compile the result with tsc.
  */
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import ts from "typescript";
@@ -45,8 +45,8 @@ const decisionDefs = [
   { def: PetAdoptionFee as DecisionDef, name: "petadoptionfee" },
 ];
 
-// 10 model generators — some return "" for models without relevant data
-const modelGenerators: {
+// Model generators that go into generated/ (always overwritten)
+const generatedGenerators: {
   ext: string;
   fn: (m: ModelDef) => string;
   ts: boolean;
@@ -56,11 +56,19 @@ const modelGenerators: {
   { ext: "events.ts", fn: generateEvents, ts: true },
   { ext: "commands.ts", fn: generateCommands, ts: true },
   { ext: "invariants.ts", fn: generateInvariants, ts: true },
-  { ext: "orchestrators.ts", fn: generateOrchestrators, ts: true },
   { ext: "test.ts", fn: generateTests, ts: true },
-  { ext: "e2e.ts", fn: generateE2EStubs, ts: true },
   { ext: "zod.ts", fn: generateZod, ts: true },
   { ext: "mermaid.md", fn: generateMermaid, ts: false },
+];
+
+// Model generators that go into src/ (generate-once, imports from ../generated/)
+const srcGenerators: {
+  ext: string;
+  fn: (m: ModelDef) => string;
+  ts: boolean;
+}[] = [
+  { ext: "orchestrators.ts", fn: generateOrchestrators, ts: true },
+  { ext: "e2e.ts", fn: generateE2EStubs, ts: true },
 ];
 
 // 3 decision generators
@@ -73,6 +81,30 @@ const decisionGenerators: {
   { ext: "test.ts", fn: generateDecisionTests, ts: true },
   { ext: "table.md", fn: generateDecisionTable, ts: false },
 ];
+
+/** Run generators, write TS output to dir, return list of file paths. */
+function writeGenFiles<T>(
+  defs: { def: T; name: string }[],
+  generators: { ext: string; fn: (d: T) => string; ts: boolean }[],
+  dir: string,
+): string[] {
+  const paths: string[] = [];
+
+  for (const d of defs) {
+    for (const gen of generators) {
+      const content = gen.fn(d.def);
+
+      if (!content || !gen.ts) continue;
+
+      const filename = `${d.name}.${gen.ext}`;
+
+      writeFileSync(join(dir, filename), content);
+      paths.push(join(dir, filename));
+    }
+  }
+
+  return paths;
+}
 
 describe("e2e-proof: pet-store full generation + tsc compile", () => {
   // Generators that must produce output for every pet-store model
@@ -92,8 +124,10 @@ describe("e2e-proof: pet-store full generation + tsc compile", () => {
   const emptyForCustomer = ["test.ts", "invariants.ts"];
 
   it("every model generator produces expected output", () => {
+    const allModelGenerators = [...generatedGenerators, ...srcGenerators];
+
     for (const m of models) {
-      for (const gen of modelGenerators) {
+      for (const gen of allModelGenerators) {
         const content = gen.fn(m.def);
         const filename = `${m.name}.${gen.ext}`;
 
@@ -122,40 +156,20 @@ describe("e2e-proof: pet-store full generation + tsc compile", () => {
 
   it("all generated TypeScript compiles with strict tsc", () => {
     const dir = mkdtempSync(join(tmpdir(), "dopespec-e2e-proof-"));
+    const generatedDir = join(dir, "generated");
+    const srcDir = join(dir, "src");
+
+    mkdirSync(generatedDir, { recursive: true });
+    mkdirSync(srcDir, { recursive: true });
 
     try {
       writeFileSync(join(dir, "package.json"), '{"type":"module"}');
 
-      const tsFiles: string[] = [];
-
-      // Generate model files
-      for (const m of models) {
-        for (const gen of modelGenerators) {
-          const content = gen.fn(m.def);
-
-          // Skip empty generators (e.g. generateTests for models without scenarios)
-          if (!content || !gen.ts) continue;
-
-          const filename = `${m.name}.${gen.ext}`;
-
-          writeFileSync(join(dir, filename), content);
-          tsFiles.push(join(dir, filename));
-        }
-      }
-
-      // Generate decision files
-      for (const d of decisionDefs) {
-        for (const gen of decisionGenerators) {
-          const content = gen.fn(d.def);
-
-          if (!content || !gen.ts) continue;
-
-          const filename = `${d.name}.${gen.ext}`;
-
-          writeFileSync(join(dir, filename), content);
-          tsFiles.push(join(dir, filename));
-        }
-      }
+      const tsFiles = [
+        ...writeGenFiles(models, generatedGenerators, generatedDir),
+        ...writeGenFiles(models, srcGenerators, srcDir),
+        ...writeGenFiles(decisionDefs, decisionGenerators, generatedDir),
+      ];
 
       // Compile all TS files together
       const program = ts.createProgram(tsFiles, {

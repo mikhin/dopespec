@@ -21,19 +21,23 @@ import {
   generateZod,
 } from "../codegen/index.js";
 
-// --- Generator registries (same mapping as e2e-proof) ---
+// --- Generator registries ---
+// "generated/" files are always overwritten; "src/" files are generate-once.
 
-const modelGenerators: { ext: string; fn: (m: ModelDef) => string }[] = [
+const generatedGenerators: { ext: string; fn: (m: ModelDef) => string }[] = [
   { ext: "types.ts", fn: generateTypes },
   { ext: "transitions.ts", fn: generateTransitions },
   { ext: "events.ts", fn: generateEvents },
   { ext: "commands.ts", fn: generateCommands },
   { ext: "invariants.ts", fn: generateInvariants },
-  { ext: "orchestrators.ts", fn: generateOrchestrators },
   { ext: "test.ts", fn: generateTests },
-  { ext: "e2e.ts", fn: generateE2EStubs },
   { ext: "zod.ts", fn: generateZod },
   { ext: "mermaid.md", fn: generateMermaid },
+];
+
+const srcGenerators: { ext: string; fn: (m: ModelDef) => string }[] = [
+  { ext: "orchestrators.ts", fn: generateOrchestrators },
+  { ext: "e2e.ts", fn: generateE2EStubs },
 ];
 
 const decisionGenerators: {
@@ -55,10 +59,10 @@ export async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // Default outdir: "generated" sibling to the schema file
-  const outPath = outdir
-    ? resolve(outdir)
-    : join(dirname(resolved), "generated");
+  // Two-folder output: generated/ (always overwritten) + src/ (user code, generate-once)
+  const baseDir = outdir ? resolve(outdir) : dirname(resolved);
+  const generatedPath = join(baseDir, "generated");
+  const srcPath = join(baseDir, "src");
 
   // Dynamic import of schema file (tsx handles .ts resolution)
   const schemaUrl = pathToFileURL(resolved).href;
@@ -81,51 +85,63 @@ export async function main(): Promise<void> {
     process.exit(1);
   }
 
-  console.log(`Generating into ${outPath}/\n`);
+  console.log(`Generating into ${generatedPath}/`);
+  console.log(`User code into  ${srcPath}/\n`);
 
-  const filesWritten = generate(models, decisionDefs, outPath);
+  const counts = generate(models, decisionDefs, generatedPath, srcPath);
 
-  console.log(`\nDone — ${String(filesWritten)} files written to ${outPath}`);
+  const parts = [`${String(counts.generated)} in generated/`];
+
+  if (counts.src > 0) parts.push(`${String(counts.src)} in src/`);
+
+  console.log(`\nDone — ${parts.join(", ")}`);
+
+  if (counts.skipped > 0) {
+    console.log(
+      `(${String(counts.skipped)} src file${counts.skipped > 1 ? "s" : ""} skipped — already exist)`,
+    );
+  }
 }
 
 function generate(
   models: { def: ModelDef; name: string }[],
   decisionDefs: { def: DecisionDef; name: string }[],
-  outPath: string,
-): number {
-  mkdirSync(outPath, { recursive: true });
+  generatedPath: string,
+  srcPath: string,
+): { generated: number; skipped: number; src: number } {
+  mkdirSync(generatedPath, { recursive: true });
+  mkdirSync(srcPath, { recursive: true });
 
-  let filesWritten = 0;
+  let generated = 0;
+  let skipped = 0;
+  let src = 0;
 
   for (const m of models) {
-    for (const gen of modelGenerators) {
-      const content = gen.fn(m.def);
+    generated += writeGeneratedFiles(
+      m.name,
+      generatedGenerators,
+      m.def,
+      generatedPath,
+      "generated",
+    );
 
-      if (!content) continue;
+    const srcResult = writeSrcFiles(m.name, m.def, srcPath);
 
-      const filename = `${m.name}.${gen.ext}`;
-
-      writeFileSync(join(outPath, filename), content);
-      filesWritten++;
-      console.log(`  ${filename}`);
-    }
+    src += srcResult.written;
+    skipped += srcResult.skipped;
   }
 
   for (const d of decisionDefs) {
-    for (const gen of decisionGenerators) {
-      const content = gen.fn(d.def);
-
-      if (!content) continue;
-
-      const filename = `${d.name}.${gen.ext}`;
-
-      writeFileSync(join(outPath, filename), content);
-      filesWritten++;
-      console.log(`  ${filename}`);
-    }
+    generated += writeGeneratedFiles(
+      d.name,
+      decisionGenerators,
+      d.def,
+      generatedPath,
+      "generated",
+    );
   }
 
-  return filesWritten;
+  return { generated, skipped, src };
 }
 
 function isDecisionDef(value: unknown): value is DecisionDef {
@@ -154,7 +170,12 @@ function parseArgs(argv: string[]): {
 
   if (args.includes("--help") || args.includes("-h") || args.length === 0) {
     console.log("Usage: dopespec generate <schema-file> [--outdir <dir>]");
-    console.log("\nDefault output: generated/ sibling to the schema file");
+    console.log(
+      "\nDefault output: generated/ (always overwritten) + src/ (user code, generate-once)",
+    );
+    console.log(
+      "Both folders are siblings to the schema file (or under --outdir).",
+    );
     process.exit(0);
   }
 
@@ -203,6 +224,62 @@ function parseArgs(argv: string[]): {
   }
 
   return { outdir, schemaPath };
+}
+
+function writeGeneratedFiles<T>(
+  name: string,
+  generators: { ext: string; fn: (def: T) => string }[],
+  def: T,
+  outPath: string,
+  prefix: string,
+): number {
+  let count = 0;
+
+  for (const gen of generators) {
+    const content = gen.fn(def);
+
+    if (!content) continue;
+
+    const filename = `${name}.${gen.ext}`;
+
+    writeFileSync(join(outPath, filename), content);
+    count++;
+    console.log(`  ${prefix}/${filename}`);
+  }
+
+  return count;
+}
+
+function writeSrcFiles(
+  name: string,
+  def: ModelDef,
+  srcPath: string,
+): { skipped: number; written: number } {
+  let written = 0;
+  let skipped = 0;
+
+  for (const gen of srcGenerators) {
+    const content = gen.fn(def);
+
+    if (!content) continue;
+
+    const filename = `${name}.${gen.ext}`;
+    const filePath = join(srcPath, filename);
+
+    if (existsSync(filePath)) {
+      console.log(
+        `  src/${filename} (exists, skipped — new handlers not added)`,
+      );
+      skipped++;
+      continue;
+    }
+
+    writeFileSync(filePath, content);
+    written++;
+    console.log(`  src/${filename}`);
+  }
+
+  return { skipped, written };
 }
 
 await main();

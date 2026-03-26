@@ -267,7 +267,7 @@ describe("generateOrchestrators", () => {
     const output = generateOrchestrators(Order as ModelDef);
 
     expect(output).toContain(
-      "import type { OrderProps } from './order.types.js'",
+      "import type { OrderProps } from '../generated/order.types.js'",
     );
   });
 

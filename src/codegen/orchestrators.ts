@@ -13,8 +13,10 @@ export const generateOrchestrators = (model: ModelDef): string => {
   const propsType = `${typeName}Props`;
   const lines: string[] = [];
 
-  // Convention: generated orchestrators module imports types from ./${modelName}.types
-  lines.push(`import type { ${propsType} } from './${modelName}.types.js';`);
+  // User code in src/ imports types from ../generated/
+  lines.push(
+    `import type { ${propsType} } from '../generated/${modelName}.types.js';`,
+  );
   lines.push("");
 
   for (const [name, actionDef] of actions) {

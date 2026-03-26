@@ -33,7 +33,11 @@ export default tseslint.config(
         },
       ],
 
-      // TypeScript strictness
+      // TypeScript strictness — allow _prefixed unused params (convention for stubs)
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_" },
+      ],
       "@typescript-eslint/no-non-null-assertion": "error",
       "@typescript-eslint/consistent-type-definitions": ["error", "type"],
 

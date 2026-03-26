@@ -1,4 +1,4 @@
-import type { PetProps } from "./pet.types.js";
+import type { PetProps } from "../generated/pet.types.js";
 
 export function handlePetUpdatePrice(
   ctx: PetProps,
