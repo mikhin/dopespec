@@ -39,6 +39,7 @@ on (model + action), requires (relations), rules (optional), scenarios
 **Use cases:** cross-aggregate constraints, WIP limits, role restrictions
 
 **Status:** Design direction only. Two implementation options remain open:
+
 1. `policy()` as a standalone primitive (simpler to implement)
 2. Extending `model.constraints` with `.requires()` (all rules in one place, but harder type work)
 
@@ -54,11 +55,11 @@ rule     — when(condition) → effect
 scenario — given → when → then
 ```
 
-| Primitive | Shape | Rules | Scenarios |
-|---|---|---|---|
-| `model()` | props, relations | transitions (state change), constraints (prevent) | per transition |
-| `decisions()` | inputs, outputs | when → then (output mapping) | implicit (1 per rule) |
-| `policy()` | on + requires | when → prevent (optional) | cross-model given/expect |
+| Primitive     | Shape            | Rules                                             | Scenarios                |
+| ------------- | ---------------- | ------------------------------------------------- | ------------------------ |
+| `model()`     | props, relations | transitions (state change), constraints (prevent) | per transition           |
+| `decisions()` | inputs, outputs  | when → then (output mapping)                      | implicit (1 per rule)    |
+| `policy()`    | on + requires    | when → prevent (optional)                         | cross-model given/expect |
 
 ## Alternatives considered
 

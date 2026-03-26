@@ -6,6 +6,7 @@
 import {
   action,
   belongsTo,
+  decisions,
   hasMany,
   lifecycle,
   model,
@@ -142,3 +143,18 @@ action<{ name: string }>({ wrong: string() });
 
 // @ts-expect-error: fields value number() does not match Payload type string → StringProp
 action<{ name: string }>({ name: number() });
+
+// --- decisions() with model-linked props must reject invalid values ---
+
+const _petModel = model("TypeTestPet", {
+  props: { species: oneOf(["dog", "cat"] as const) },
+});
+
+decisions("TypeTestDecision", {
+  inputs: { species: _petModel.props!.species },
+  outputs: { fee: number() },
+  rules: [
+    // @ts-expect-error: 'typo' is not 'dog' | 'cat'
+    { then: { fee: 0 }, when: { species: "typo" } },
+  ],
+});

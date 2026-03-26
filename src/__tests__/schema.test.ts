@@ -8,6 +8,7 @@ import type {
 
 import { action } from "../schema/actions.js";
 import { rule } from "../schema/constraints.js";
+import { decisions } from "../schema/decisions.js";
 import { model } from "../schema/model.js";
 import {
   boolean,
@@ -632,5 +633,208 @@ describe("edge cases", () => {
     // Only lifecycle values are valid — oneOf 'low'/'medium'/'high' cannot be used in from/to
     expect(m.transitions?.deactivate.from).toBe("active");
     expect(m.transitions?.deactivate.to).toBe("inactive");
+  });
+});
+
+// --- decisions() ---
+
+describe("decisions", () => {
+  it("creates a valid DecisionDef", () => {
+    const d = decisions("Tier", {
+      inputs: { score: number() },
+      outputs: { level: string() },
+      rules: [{ then: { level: "gold" }, when: { score: 100 } }],
+    });
+
+    expect(d.kind).toBe("decision");
+    expect(d.name).toBe("Tier");
+    expect(d.inputs.score.kind).toBe("number");
+    expect(d.outputs.level.kind).toBe("string");
+    expect(d.rules).toHaveLength(1);
+    expect(d.rules[0]?.when).toEqual({ score: 100 });
+    expect(d.rules[0]?.then).toEqual({ level: "gold" });
+  });
+
+  it("supports multiple rules", () => {
+    const d = decisions("Discount", {
+      inputs: { tier: string() },
+      outputs: { percent: number() },
+      rules: [
+        { then: { percent: 10 }, when: { tier: "silver" } },
+        { then: { percent: 20 }, when: { tier: "gold" } },
+        { then: { percent: 30 }, when: { tier: "platinum" } },
+      ],
+    });
+
+    expect(d.rules).toHaveLength(3);
+  });
+
+  it("supports partial when (not all inputs matched)", () => {
+    const d = decisions("Route", {
+      inputs: { method: string(), path: string() },
+      outputs: { handler: string() },
+      rules: [{ then: { handler: "healthCheck" }, when: { path: "/health" } }],
+    });
+
+    expect(d.rules[0]?.when).toEqual({ path: "/health" });
+  });
+
+  it("supports empty when (catch-all)", () => {
+    const d = decisions("Default", {
+      inputs: { x: number() },
+      outputs: { y: number() },
+      rules: [{ then: { y: 0 }, when: {} }],
+    });
+
+    expect(d.rules[0]?.when).toEqual({});
+  });
+
+  it("supports oneOf inputs", () => {
+    const d = decisions("Access", {
+      inputs: { role: oneOf(["admin", "user"] as const) },
+      outputs: { canDelete: boolean() },
+      rules: [
+        { then: { canDelete: true }, when: { role: "admin" } },
+        { then: { canDelete: false }, when: { role: "user" } },
+      ],
+    });
+
+    expect(d.rules).toHaveLength(2);
+  });
+
+  it("supports multiple outputs", () => {
+    const d = decisions("Pricing", {
+      inputs: { plan: string() },
+      outputs: { maxUsers: number(), price: number() },
+      rules: [
+        { then: { maxUsers: 5, price: 0 }, when: { plan: "free" } },
+        { then: { maxUsers: 100, price: 49 }, when: { plan: "pro" } },
+      ],
+    });
+
+    expect(d.rules[0]?.then).toEqual({ maxUsers: 5, price: 0 });
+  });
+
+  it("trims whitespace from name", () => {
+    const d = decisions("  Spaced  ", {
+      inputs: { x: number() },
+      outputs: { y: number() },
+      rules: [{ then: { y: 2 }, when: { x: 1 } }],
+    });
+
+    expect(d.name).toBe("Spaced");
+  });
+
+  it("throws on empty name", () => {
+    expect(() =>
+      decisions("", {
+        inputs: { x: number() },
+        outputs: { y: number() },
+        rules: [{ then: { y: 2 }, when: { x: 1 } }],
+      }),
+    ).toThrow("non-empty name");
+  });
+
+  it("throws on no inputs", () => {
+    expect(() =>
+      decisions("Bad", {
+        inputs: {},
+        outputs: { y: number() },
+        rules: [{ then: { y: 0 }, when: {} }],
+      }),
+    ).toThrow("at least one input");
+  });
+
+  it("throws on no outputs", () => {
+    expect(() =>
+      decisions("Bad", {
+        inputs: { x: number() },
+        outputs: {},
+        rules: [{ then: {}, when: { x: 1 } }],
+      }),
+    ).toThrow("at least one output");
+  });
+
+  it("throws on no rules", () => {
+    expect(() =>
+      decisions("Bad", {
+        inputs: { x: number() },
+        outputs: { y: number() },
+        rules: [],
+      }),
+    ).toThrow("at least one rule");
+  });
+
+  it("throws on lifecycle input", () => {
+    expect(() =>
+      decisions("Bad", {
+        inputs: { status: lifecycle(["a", "b"]) },
+        outputs: { y: number() },
+        rules: [{ then: { y: 1 }, when: { status: "a" } }],
+      }),
+    ).toThrow("lifecycle");
+  });
+
+  it("throws on lifecycle output", () => {
+    expect(() =>
+      decisions("Bad", {
+        inputs: { x: number() },
+        outputs: { status: lifecycle(["a", "b"]) },
+        rules: [{ then: { status: "a" }, when: { x: 1 } }],
+      }),
+    ).toThrow("lifecycle");
+  });
+
+  it("throws on optional input", () => {
+    expect(() =>
+      decisions("Bad", {
+        inputs: { x: optional(number()) },
+        outputs: { y: number() },
+        rules: [{ then: { y: 2 }, when: { x: 1 } }],
+      }),
+    ).toThrow("optional");
+  });
+
+  it("throws on optional output", () => {
+    expect(() =>
+      decisions("Bad", {
+        inputs: { x: number() },
+        outputs: { y: optional(number()) },
+        rules: [{ then: { y: 2 }, when: { x: 1 } }],
+      }),
+    ).toThrow("optional");
+  });
+
+  it("throws on unknown when key", () => {
+    expect(() =>
+      decisions("Bad", {
+        inputs: { x: number() },
+        outputs: { y: number() },
+        // @ts-expect-error -- intentionally passing invalid when key
+        rules: [{ then: { y: 2 }, when: { z: 1 } }],
+      }),
+    ).toThrow('when key "z" is not a defined input');
+  });
+
+  it("throws on unknown then key", () => {
+    expect(() =>
+      decisions("Bad", {
+        inputs: { x: number() },
+        outputs: { y: number() },
+        // @ts-expect-error -- intentionally passing invalid then key
+        rules: [{ then: { z: 2 }, when: { x: 1 } }],
+      }),
+    ).toThrow('then key "z" is not a defined output');
+  });
+
+  it("throws on missing then key", () => {
+    expect(() =>
+      decisions("Bad", {
+        inputs: { x: number() },
+        outputs: { a: number(), b: number() },
+        // @ts-expect-error -- intentionally missing output key
+        rules: [{ then: { a: 1 }, when: { x: 1 } }],
+      }),
+    ).toThrow('missing output key "b"');
   });
 });

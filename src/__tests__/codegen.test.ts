@@ -5,10 +5,14 @@ import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
+import type { DecisionDef } from "../schema/decisions.js";
 import type { ModelDef } from "../schema/model.js";
 
 import {
   generateCommands,
+  generateDecisionEvaluate,
+  generateDecisionTable,
+  generateDecisionTests,
   generateE2EStubs,
   generateEvents,
   generateInvariants,
@@ -19,9 +23,14 @@ import {
   generateTypes,
   generateZod,
 } from "../codegen/index.js";
-import { guardToSource, relationIdField } from "../codegen/utils.js";
-import { Customer, Order, Pet } from "../examples/pet-store.js";
+import {
+  guardToSource,
+  relationIdField,
+  valueToSource,
+} from "../codegen/utils.js";
+import { CreditTier, Customer, Order, Pet } from "../examples/pet-store.js";
 import { action } from "../schema/actions.js";
+import { decisions } from "../schema/decisions.js";
 import { model } from "../schema/model.js";
 import { boolean, number, oneOf, optional, string } from "../schema/props.js";
 
@@ -553,6 +562,23 @@ describe("guardToSource", () => {
   });
 });
 
+// --- valueToSource ---
+
+describe("valueToSource", () => {
+  it("escapes single quotes in strings", () => {
+    expect(valueToSource("O'Brien")).toBe("'O\\'Brien'");
+  });
+
+  it("escapes backslashes in strings", () => {
+    expect(valueToSource("a\\b")).toBe("'a\\\\b'");
+  });
+
+  it("serializes numbers and booleans", () => {
+    expect(valueToSource(42)).toBe("42");
+    expect(valueToSource(true)).toBe("true");
+  });
+});
+
 // --- relationIdField ---
 
 describe("relationIdField", () => {
@@ -674,5 +700,143 @@ describe("generated code validity", () => {
     } finally {
       rmSync(dir, { recursive: true });
     }
+  });
+});
+
+// --- generateDecisionEvaluate ---
+
+describe("generateDecisionEvaluate", () => {
+  it("generates input/output types and evaluate function for CreditTier", () => {
+    const output = generateDecisionEvaluate(CreditTier as DecisionDef);
+
+    expect(output).toContain("export type CreditTierInput");
+    expect(output).toContain("extraItemId: string");
+    expect(output).toContain("amount: number");
+    expect(output).toContain("export type CreditTierOutput");
+    expect(output).toContain("credits: number");
+    expect(output).toContain("function evaluateCreditTier");
+    expect(output).toContain("input.extraItemId === 'tier_3'");
+    expect(output).toContain("credits: 5");
+    expect(output).toContain("credits: 10");
+    expect(output).toContain("credits: 30");
+    expect(output).toContain("No matching rule");
+  });
+
+  it("generates multi-condition when clause", () => {
+    const d = decisions("Multi", {
+      inputs: { a: number(), b: string() },
+      outputs: { x: number() },
+      rules: [{ then: { x: 42 }, when: { a: 1, b: "yes" } }],
+    });
+
+    const output = generateDecisionEvaluate(d as DecisionDef);
+
+    expect(output).toContain("input.a === 1 && input.b === 'yes'");
+  });
+
+  it("generates catch-all for empty when", () => {
+    const d = decisions("Fallback", {
+      inputs: { x: number() },
+      outputs: { y: number() },
+      rules: [{ then: { y: 0 }, when: {} }],
+    });
+
+    const output = generateDecisionEvaluate(d as DecisionDef);
+
+    expect(output).toContain("return { y: 0 }");
+    expect(output).not.toContain("if ()");
+  });
+
+  it("generates oneOf union type for inputs", () => {
+    const d = decisions("Access", {
+      inputs: { role: oneOf(["admin", "user"] as const) },
+      outputs: { canEdit: boolean() },
+      rules: [
+        { then: { canEdit: true }, when: { role: "admin" } },
+        { then: { canEdit: false }, when: { role: "user" } },
+      ],
+    });
+
+    const output = generateDecisionEvaluate(d as DecisionDef);
+
+    expect(output).toContain("role: 'admin' | 'user'");
+  });
+
+  it("compiles as valid TypeScript", () => {
+    const source = generateDecisionEvaluate(CreditTier as DecisionDef);
+
+    const result = ts.transpileModule(source, {
+      compilerOptions: {
+        strict: true,
+        target: ts.ScriptTarget.ES2022,
+      },
+    });
+
+    expect(result.diagnostics ?? []).toHaveLength(0);
+  });
+});
+
+// --- generateDecisionTests ---
+
+describe("generateDecisionTests", () => {
+  it("generates vitest tests for each rule", () => {
+    const output = generateDecisionTests(CreditTier as DecisionDef);
+
+    expect(output).toContain("import { describe, it, expect } from 'vitest'");
+    expect(output).toContain("import { evaluateCreditTier }");
+    expect(output).toContain("from './credittier.evaluate.js'");
+    expect(output).toContain("describe('CreditTier'");
+    expect(output).toContain("when extraItemId");
+    expect(output).toContain("then credits");
+    expect(output).toContain("evaluateCreditTier(");
+    expect(output).toContain("expect(result).toEqual(");
+  });
+
+  it("uses default values for unmatched inputs", () => {
+    const output = generateDecisionTests(CreditTier as DecisionDef);
+
+    // amount is not in when clause, so should use default 0
+    expect(output).toContain("amount: 0");
+  });
+
+  it("generates one test per rule", () => {
+    const output = generateDecisionTests(CreditTier as DecisionDef);
+    const matches = output.match(/it\('/g);
+
+    expect(matches).toHaveLength(3);
+  });
+});
+
+// --- generateDecisionTable ---
+
+describe("generateDecisionTable", () => {
+  it("generates markdown table for CreditTier", () => {
+    const output = generateDecisionTable(CreditTier as DecisionDef);
+
+    expect(output).toContain("# CreditTier");
+    expect(output).toContain("amount");
+    expect(output).toContain("extraItemId");
+    expect(output).toContain("\u2192 credits");
+    expect(output).toContain("tier_3");
+    expect(output).toContain("tier_5");
+    expect(output).toContain("tier_12");
+    expect(output).toContain("5");
+    expect(output).toContain("10");
+    expect(output).toContain("30");
+  });
+
+  it("uses * for unmatched inputs", () => {
+    const output = generateDecisionTable(CreditTier as DecisionDef);
+
+    // amount is not in when clause, so should show *
+    expect(output).toContain("*");
+  });
+
+  it("has correct number of rows (header + separator + rules)", () => {
+    const output = generateDecisionTable(CreditTier as DecisionDef);
+    const lines = output.trim().split("\n");
+
+    // title, blank, header, separator, 3 data rows
+    expect(lines).toHaveLength(7);
   });
 });

@@ -1,6 +1,8 @@
 export { action } from "./actions.js";
 export type { ActionDef } from "./actions.js";
 export type { ConstraintBuilder, ConstraintData } from "./constraints.js";
+export { decisions } from "./decisions.js";
+export type { DecisionDef, DecisionRule } from "./decisions.js";
 export { model } from "./model.js";
 export type {
   ConstraintHelpers,

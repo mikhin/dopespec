@@ -121,15 +121,15 @@ output/
 Decision table. Inputs → outputs. No lifecycle, no state machine. Pure function.
 
 ```typescript
-const CreditTier = decisions('CreditTier', {
+const CreditTier = decisions("CreditTier", {
   inputs: { extraItemId: string(), amount: number() },
   outputs: { credits: number() },
   rules: [
-    { when: { extraItemId: 'tier_3' }, then: { credits: 5 } },
-    { when: { extraItemId: 'tier_5' }, then: { credits: 10 } },
-    { when: { extraItemId: 'tier_12' }, then: { credits: 30 } },
+    { when: { extraItemId: "tier_3" }, then: { credits: 5 } },
+    { when: { extraItemId: "tier_5" }, then: { credits: 10 } },
+    { when: { extraItemId: "tier_12" }, then: { credits: 30 } },
   ],
-})
+});
 ```
 
 Generates: evaluate function, unit tests (one per rule), markdown table.

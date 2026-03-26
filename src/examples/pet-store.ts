@@ -3,10 +3,12 @@ import {
   belongsTo,
   boolean,
   date,
+  decisions,
   hasMany,
   lifecycle,
   model,
   number,
+  oneOf,
   optional,
   string,
 } from "../schema/index.js";
@@ -49,7 +51,7 @@ const Pet = model("Pet", {
     name: string(),
     nickname: optional(string()),
     price: number(),
-    species: string(),
+    species: oneOf(["dog", "cat", "bird", "fish"] as const),
     status: lifecycle(petStates),
     vaccinated: boolean(),
   },
@@ -117,4 +119,34 @@ const Order = model("Order", {
   }),
 });
 
-export { Customer, Order, Pet };
+// --- CreditTier (decision table) ---
+
+const CreditTier = decisions("CreditTier", {
+  inputs: { amount: number(), extraItemId: string() },
+  outputs: { credits: number() },
+  rules: [
+    { then: { credits: 5 }, when: { extraItemId: "tier_3" } },
+    { then: { credits: 10 }, when: { extraItemId: "tier_5" } },
+    { then: { credits: 30 }, when: { extraItemId: "tier_12" } },
+  ],
+});
+
+// --- PetAdoptionFee (decisions linked to model props) ---
+// species comes from Pet.props — oneOf(["dog", "cat", "bird", "fish"]).
+// Adding/removing a species in Pet forces this table to be reviewed.
+// Using "typo" in when would be a compile error.
+
+const PetAdoptionFee = decisions("PetAdoptionFee", {
+  inputs: { species: Pet.props!.species, vaccinated: Pet.props!.vaccinated },
+  outputs: { fee: number() },
+  rules: [
+    { then: { fee: 50 }, when: { species: "dog", vaccinated: true } },
+    { then: { fee: 75 }, when: { species: "dog", vaccinated: false } },
+    { then: { fee: 30 }, when: { species: "cat", vaccinated: true } },
+    { then: { fee: 45 }, when: { species: "cat", vaccinated: false } },
+    { then: { fee: 20 }, when: { species: "bird" } },
+    { then: { fee: 15 }, when: { species: "fish" } },
+  ],
+});
+
+export { CreditTier, Customer, Order, Pet, PetAdoptionFee };

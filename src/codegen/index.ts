@@ -1,4 +1,7 @@
 export { generateCommands } from "./commands.js";
+export { generateDecisionEvaluate } from "./decisions-evaluate.js";
+export { generateDecisionTable } from "./decisions-table.js";
+export { generateDecisionTests } from "./decisions-tests.js";
 export { generateE2EStubs } from "./e2e-stubs.js";
 export { generateEvents } from "./events.js";
 export { generateInvariants } from "./invariants.js";

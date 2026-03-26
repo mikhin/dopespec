@@ -229,6 +229,45 @@ export const guardToSource = (
   }
 };
 
+/** Serialize a JS value to embeddable source code (string literal, number, boolean). */
+export const valueToSource = (value: unknown): string => {
+  if (typeof value === "string")
+    return `'${value.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
+  if (typeof value === "number" || typeof value === "boolean")
+    return String(value);
+  if (value instanceof Date) return `new Date('${value.toISOString()}')`;
+
+  return JSON.stringify(value);
+};
+
+/** Return a sensible default value (as source code) for a PropDef kind. */
+export const defaultValueForProp = (prop: PropDef): string => {
+  switch (prop.kind) {
+    case "boolean":
+      return "false";
+
+    case "date":
+      return "new Date(0)";
+
+    case "lifecycle": // fall through
+
+    case "oneOf": {
+      const values = prop.values as readonly string[];
+
+      return `'${values[0]}'`;
+    }
+
+    case "number":
+      return "0";
+
+    case "string":
+      return "''";
+
+    default:
+      return assertExhaustive(prop.kind);
+  }
+};
+
 /** Convert action fields (Record<string, PropDef>) to a TypeScript type literal. */
 export const fieldsToTSType = (
   fields: Record<string, PropDef> | undefined,

@@ -19,30 +19,86 @@ Decision table. Inputs → outputs. No lifecycle, no state machine. Pure functio
 ### API
 
 ```typescript
-const MemberPermissions = decisions('MemberPermissions', {
+const MemberPermissions = decisions("MemberPermissions", {
   inputs: {
-    editorRole: oneOf(['owner', 'propertyAdmin', 'deptAdmin', 'member', 'terminated'] as const),
-    targetRole: oneOf(['owner', 'employee', 'terminated'] as const),
+    editorRole: oneOf([
+      "owner",
+      "propertyAdmin",
+      "deptAdmin",
+      "member",
+      "terminated",
+    ] as const),
+    targetRole: oneOf(["owner", "employee", "terminated"] as const),
     isSelfEdit: boolean(),
   },
 
   outputs: {
-    editPersonalData: oneOf(['enabled', 'disabled'] as const),
-    editOrgRole: oneOf(['enabled', 'disabled'] as const),
-    editPropertyRole: oneOf(['enabled', 'disabled', 'filtered'] as const),
-    addProperty: oneOf(['visible', 'hidden'] as const),
-    inviteSection: oneOf(['shown', 'hidden'] as const),
+    editPersonalData: oneOf(["enabled", "disabled"] as const),
+    editOrgRole: oneOf(["enabled", "disabled"] as const),
+    editPropertyRole: oneOf(["enabled", "disabled", "filtered"] as const),
+    addProperty: oneOf(["visible", "hidden"] as const),
+    inviteSection: oneOf(["shown", "hidden"] as const),
   },
 
   rules: [
-    { when: { editorRole: 'owner', isSelfEdit: false }, then: { editPersonalData: 'enabled', editOrgRole: 'enabled', addProperty: 'visible', inviteSection: 'shown' } },
-    { when: { editorRole: 'owner', isSelfEdit: true }, then: { editPersonalData: 'enabled', editOrgRole: 'disabled', addProperty: 'visible', inviteSection: 'shown' } },
-    { when: { editorRole: 'propertyAdmin' }, then: { editPersonalData: 'disabled', editOrgRole: 'disabled', editPropertyRole: 'filtered', addProperty: 'visible', inviteSection: 'hidden' } },
-    { when: { editorRole: 'deptAdmin' }, then: { editPersonalData: 'disabled', editOrgRole: 'disabled', editPropertyRole: 'disabled', addProperty: 'hidden', inviteSection: 'hidden' } },
-    { when: { editorRole: 'member' }, then: { editPersonalData: 'disabled', editOrgRole: 'disabled', addProperty: 'hidden', inviteSection: 'hidden' } },
-    { when: { editorRole: 'terminated' }, then: { editPersonalData: 'disabled', editOrgRole: 'disabled', addProperty: 'hidden', inviteSection: 'hidden' } },
+    {
+      when: { editorRole: "owner", isSelfEdit: false },
+      then: {
+        editPersonalData: "enabled",
+        editOrgRole: "enabled",
+        addProperty: "visible",
+        inviteSection: "shown",
+      },
+    },
+    {
+      when: { editorRole: "owner", isSelfEdit: true },
+      then: {
+        editPersonalData: "enabled",
+        editOrgRole: "disabled",
+        addProperty: "visible",
+        inviteSection: "shown",
+      },
+    },
+    {
+      when: { editorRole: "propertyAdmin" },
+      then: {
+        editPersonalData: "disabled",
+        editOrgRole: "disabled",
+        editPropertyRole: "filtered",
+        addProperty: "visible",
+        inviteSection: "hidden",
+      },
+    },
+    {
+      when: { editorRole: "deptAdmin" },
+      then: {
+        editPersonalData: "disabled",
+        editOrgRole: "disabled",
+        editPropertyRole: "disabled",
+        addProperty: "hidden",
+        inviteSection: "hidden",
+      },
+    },
+    {
+      when: { editorRole: "member" },
+      then: {
+        editPersonalData: "disabled",
+        editOrgRole: "disabled",
+        addProperty: "hidden",
+        inviteSection: "hidden",
+      },
+    },
+    {
+      when: { editorRole: "terminated" },
+      then: {
+        editPersonalData: "disabled",
+        editOrgRole: "disabled",
+        addProperty: "hidden",
+        inviteSection: "hidden",
+      },
+    },
   ],
-})
+});
 ```
 
 ### Codegen Output
@@ -64,35 +120,35 @@ Cross-model scenario. Describes setup across multiple models, an action, and exp
 ### API
 
 ```typescript
-const PayActiveCustomer = interaction('PayActiveCustomer', {
+const PayActiveCustomer = interaction("PayActiveCustomer", {
   models: { order: Order, customer: Customer },
   given: {
-    order: { total: 100, status: 'pending' },
-    customer: { status: 'active' },
+    order: { total: 100, status: "pending" },
+    customer: { status: "active" },
   },
-  action: { model: 'order', do: 'pay' },
-  expect: { order: { status: 'paid' } },
-})
+  action: { model: "order", do: "pay" },
+  expect: { order: { status: "paid" } },
+});
 
-const PaySuspendedCustomer = interaction('PaySuspendedCustomer', {
+const PaySuspendedCustomer = interaction("PaySuspendedCustomer", {
   models: { order: Order, customer: Customer },
   given: {
-    order: { total: 100, status: 'pending' },
-    customer: { status: 'suspended' },
+    order: { total: 100, status: "pending" },
+    customer: { status: "suspended" },
   },
-  action: { model: 'order', do: 'pay' },
-  expect: 'prevented',
-})
+  action: { model: "order", do: "pay" },
+  expect: "prevented",
+});
 
-const PublishingFlow = interaction('PublishingFlow', {
+const PublishingFlow = interaction("PublishingFlow", {
   models: { schedule: Schedule, department: Department },
   given: {
-    schedule: { status: 'draft' },
+    schedule: { status: "draft" },
     department: { criticalErrors: 0 },
   },
-  action: { model: 'schedule', do: 'publish' },
-  expect: { schedule: { status: 'published' } },
-})
+  action: { model: "schedule", do: "publish" },
+  expect: { schedule: { status: "published" } },
+});
 ```
 
 ### Codegen Output
@@ -111,11 +167,13 @@ const PublishingFlow = interaction('PublishingFlow', {
 ## Duler Coverage
 
 ### With decisions():
+
 - Member edit permissions (80+ test cases) ✅
 - Access control matrix (resource × role × action) ✅
 - UI visibility patterns (hidden/disabled/filtered) ✅
 
 ### With interaction():
+
 - Terminated member cannot be assigned shifts ✅
 - Cannot publish if critical errors ✅
 - Pinned shift stops when member removed ✅
@@ -123,6 +181,7 @@ const PublishingFlow = interaction('PublishingFlow', {
 - Invite acceptance flow ✅
 
 ### Already covered by model():
+
 - Schedule lifecycle (draft → published → unpublished) ✅
 - PinnedShift lifecycle (virtual → materialized) ✅
 - Invite lifecycle (pending → accepted → revoked) ✅

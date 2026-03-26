@@ -44,12 +44,13 @@ policy("CustomerMustBeActive", {
   models: [Order, Customer],
   when: (order, customer) => customer.status === "suspended",
   prevents: "pay",
-})
+});
 ```
 
 **Verdict: Cleanest DDD separation, lowest impact on existing code.**
 
 Pros:
+
 - Zero changes to existing generators
 - Explicit cross-aggregate concept — honest about what it is
 - Maps to DDD Domain Service / Policy pattern
@@ -57,6 +58,7 @@ Pros:
 - Can generate its own test file, diagram, types
 
 Cons:
+
 - New top-level concept (schema primitive alongside `model()`)
 - New generator, new file convention (`order-customer.policy.js`?)
 - Disconnected from model definition — less "schema-first" feeling
@@ -72,12 +74,13 @@ constraints: ({ rule }) => ({
     .requires("customer")
     .when((ctx) => ctx.customer.status === "suspended")
     .prevent("pay"),
-})
+});
 ```
 
 **Verdict: Most ergonomic, medium implementation cost.**
 
 Pros:
+
 - Lives inside model definition — natural extension of existing API
 - `.requires()` explicitly declares cross-aggregate dependency
 - Consistent chaining pattern with existing `.when().prevent()`
@@ -85,6 +88,7 @@ Pros:
 - `guardToSource()` works as-is (still `(ctx) => expr`)
 
 Cons:
+
 - `ModelRef` is a phantom brand — carries no target prop types. Needs redesign or parallel type-resolution
 - `ConstraintBuilder` needs new `Relations` generic parameter threaded through
 - Combined `validateOrder()` gets non-uniform signature (some constraints need enriched ctx)
@@ -108,12 +112,12 @@ Option 1 changes every generator signature. Option 2 is isolated but duplicates 
 
 ## DDD Perspective
 
-| Pattern | Consistency | Where rules live | dopespec mapping |
-|---------|-------------|------------------|------------------|
-| Domain Service | Immediate | Application layer | Generated orchestrator |
-| Saga / Process Manager | Eventual | Orchestration layer | Future extension |
-| Policy (event-reactive) | Eventual | Listener layer | Generated handler |
-| Specification | Either | Standalone predicate | Generated validator |
+| Pattern                 | Consistency | Where rules live     | dopespec mapping       |
+| ----------------------- | ----------- | -------------------- | ---------------------- |
+| Domain Service          | Immediate   | Application layer    | Generated orchestrator |
+| Saga / Process Manager  | Eventual    | Orchestration layer  | Future extension       |
+| Policy (event-reactive) | Eventual    | Listener layer       | Generated handler      |
+| Specification           | Either      | Standalone predicate | Generated validator    |
 
 Cross-aggregate rules in DDD are **not** part of any aggregate. They belong to Domain Services or Policies. This favors Approach 2. However, for a "schema-first" tool, having rules live outside model definitions feels like they're second-class citizens.
 
@@ -163,6 +167,7 @@ const OrderPayment = policy("OrderPayment", {
 ```
 
 This generates:
+
 - `order.payment.policy.ts` — validator function
 - `order.payment.policy.tests.ts` — test cases from scenarios
 - `order.payment.policy.mermaid.md` — interaction diagram
