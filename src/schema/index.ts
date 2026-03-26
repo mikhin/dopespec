@@ -12,7 +12,6 @@ export type {
 export {
   boolean,
   date,
-  isOptional,
   lifecycle,
   number,
   oneOf,

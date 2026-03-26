@@ -54,7 +54,9 @@ const Pet = model("Pet", {
     vaccinated: boolean(),
   },
   transitions: ({ from }) => ({
-    release: from(petStates.reserved).to(petStates.available),
+    release: from(petStates.reserved)
+      .to(petStates.available)
+      .scenario({ price: 25 }, petStates.available),
     reserve: from(petStates.available)
       .to(petStates.reserved)
       .when((ctx) => ctx.vaccinated === true)
