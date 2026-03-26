@@ -58,7 +58,7 @@ It does NOT cover async workflows, database queries in guards, side effects, or 
 ### Pending improvements
 
 - [x] ModelDef.props is always optional even when model was created with props — tighten with conditional type
-- [ ] Two-folder output: generated/ (always overwrite, git-ignore) + src/ (orchestrators, e2e-stubs — generate-once, warn on new handlers)
+- [x] Two-folder output: generated/ (always overwrite) + src/ (orchestrators, e2e-stubs — generate-once, warn on new handlers)
 
 ### Cross-model generators — deferred
 
