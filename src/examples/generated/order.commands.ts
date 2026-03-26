@@ -1,10 +1,10 @@
 export type OrderAddItemCommand = {
-  type: 'OrderAddItem';
+  type: "OrderAddItem";
   payload: { productId: string; quantity: number };
 };
 
 export type OrderRemoveItemCommand = {
-  type: 'OrderRemoveItem';
+  type: "OrderRemoveItem";
   payload: { itemId: string };
 };
 
