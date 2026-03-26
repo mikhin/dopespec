@@ -102,25 +102,30 @@ Internal (used via model() callbacks, not exported from index): `from`, `rule`, 
 
 ## Generated Output Convention
 
-All generated files for a model live in a flat directory. Each generator produces one file, and cross-file imports use the `./${modelName}.*.js` pattern:
+Two-folder separation: `generated/` is always overwritten (safe to git-ignore), `src/` contains user code (never overwritten by CLI).
 
 ```
-output/
-  order.types.js        — types, props interface
-  order.transitions.js  — transition functions (imports order.types.js)
-  order.events.js       — domain event types (imports order.types.js)
-  order.invariants.js   — constraint validators (imports order.types.js)
-  order.orchestrators.js — action handler skeletons (imports order.types.js)
-  order.tests.js        — unit tests (imports order.transitions.js)
-  order.e2e-stubs.js    — e2e test skeletons with TODOs
-  order.zod.js          — Zod validation schema
-  order.mermaid.md      — Mermaid state diagram
+generated/                      ← always overwritten by CLI, git-ignored
+  order.types.ts
+  order.transitions.ts
+  order.events.ts
+  order.commands.ts
+  order.invariants.ts
+  order.tests.ts
+  order.zod.ts
+  order.mermaid.md
+  credittier.evaluate.ts
+  credittier.decision-tests.ts
+  credittier.decision-table.md
+
+src/                            ← user code, never touched by CLI
+  order.orchestrators.ts        ← generated once if missing, user fills TODOs
+  order.e2e-stubs.ts            ← generated once if missing, user fills TODOs
 ```
 
-**Overwrite strategy:**
-- **Always overwrite:** types, transitions, events, commands, invariants, zod, mermaid, tests, evaluate, decision-tests, decision-table
-- **Generate-once (skip if exists):** orchestrators, e2e-stubs — these contain TODO placeholders that become user code
-- CLI warns when new actions/transitions are added but file exists: "file exists, new handler not added"
+- `generated/` files import from each other via `./${modelName}.*.js`
+- `src/` user code imports from `../generated/` for types
+- CLI warns when new actions/transitions added but user file exists: "file exists, new handler not added"
 
 ## `decisions()` — Decision Tables
 
