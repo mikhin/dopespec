@@ -23,7 +23,11 @@ export const generateDecisionTests = (def: DecisionDef): string => {
       .map(([k, v]) => `${k} = ${JSON.stringify(v)}`)
       .join(", ");
 
-    lines.push(`  it('when ${whenDesc}, then ${thenDesc}', () => {`);
+    const testName = whenDesc
+      ? `when ${whenDesc}, then ${thenDesc}`
+      : `default (no conditions), then ${thenDesc}`;
+
+    lines.push(`  it('${testName}', () => {`);
 
     // Build input — use when values for specified keys, defaults for rest
     const inputParts: string[] = [];

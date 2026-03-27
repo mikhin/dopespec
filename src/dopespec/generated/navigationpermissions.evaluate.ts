@@ -19,5 +19,4 @@ export function evaluateNavigationPermissions(input: NavigationPermissionsInput)
   if (input.hasPropertyAdmin === true) return { canViewSchedule: true, canManageSchedule: true, canManageUsers: true, canViewDepartmentList: true, canManageDepartments: true, canManageHotel: true };
   if (input.hasDepartmentAdmin === true) return { canViewSchedule: true, canManageSchedule: true, canManageUsers: false, canViewDepartmentList: false, canManageDepartments: true, canManageHotel: false };
   return { canViewSchedule: true, canManageSchedule: false, canManageUsers: false, canViewDepartmentList: false, canManageDepartments: false, canManageHotel: false };
-  throw new Error('No matching rule for NavigationPermissions');
 }

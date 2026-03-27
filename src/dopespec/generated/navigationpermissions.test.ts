@@ -17,7 +17,7 @@ describe('NavigationPermissions', () => {
     expect(result).toEqual({ canViewSchedule: true, canManageSchedule: true, canManageUsers: false, canViewDepartmentList: false, canManageDepartments: true, canManageHotel: false });
   });
 
-  it('when , then canViewSchedule = true, canManageSchedule = false, canManageUsers = false, canViewDepartmentList = false, canManageDepartments = false, canManageHotel = false', () => {
+  it('default (no conditions), then canViewSchedule = true, canManageSchedule = false, canManageUsers = false, canViewDepartmentList = false, canManageDepartments = false, canManageHotel = false', () => {
     const result = evaluateNavigationPermissions({ hasDepartmentAdmin: false, hasPropertyAdmin: false, isOwner: false });
     expect(result).toEqual({ canViewSchedule: true, canManageSchedule: false, canManageUsers: false, canViewDepartmentList: false, canManageDepartments: false, canManageHotel: false });
   });

@@ -51,7 +51,15 @@ export const generateDecisionEvaluate = (def: DecisionDef): string => {
     }
   }
 
-  lines.push(`  throw new Error('No matching rule for ${name}');`);
+  // Only add the throw if the last rule isn't a catch-all (empty when)
+  const lastWhen = def.rules.length > 0
+    ? Object.keys(def.rules[def.rules.length - 1].when as Record<string, unknown>).length
+    : -1;
+
+  if (lastWhen !== 0) {
+    lines.push(`  throw new Error('No matching rule for ${name}');`);
+  }
+
   lines.push(`}`);
   lines.push("");
 
