@@ -137,7 +137,7 @@ src/
 
 ## Real-World Usage
 
-Validated on a production scheduling SaaS (Duler):
+Validated on a production scheduling SaaS:
 
 - **Navigation permissions** — 33 lines of if/else replaced by 4-rule `decisions()` table
 - **Member edit permissions** — 139 lines of nested conditions replaced by 8-rule `decisions()` table with scope levels
