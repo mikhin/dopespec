@@ -169,7 +169,7 @@ const PetAdoptionFee = decisions("PetAdoptionFee", {
 
 Generates: evaluate function, unit tests (one per rule), markdown table.
 
-See `docs/three-primitives.md` for full architecture decision (model + decisions + future cross-model).
+See `README.md` for public documentation and roadmap.
 
 ## `policy()` — Cross-Model Rules
 
