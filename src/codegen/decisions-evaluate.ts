@@ -56,8 +56,7 @@ export const generateDecisionEvaluate = (def: DecisionDef): string => {
   // Empty object {} = catch-all (matches everything), so no throw needed.
   const lastRule = def.rules.at(-1);
   const hasCatchAll =
-    lastRule !== undefined &&
-    Object.keys(lastRule.when).length === 0;
+    lastRule !== undefined && Object.keys(lastRule.when).length === 0;
 
   if (!hasCatchAll) {
     lines.push(`  throw new Error('No matching rule for ${name}');`);

@@ -1,4 +1,9 @@
-export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
+export type OrderStatus =
+  | "pending"
+  | "paid"
+  | "shipped"
+  | "delivered"
+  | "cancelled";
 
 export type OrderProps = {
   createdAt: Date;

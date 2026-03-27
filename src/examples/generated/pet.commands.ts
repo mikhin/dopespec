@@ -1,10 +1,10 @@
 export type PetUpdatePriceCommand = {
-  type: 'PetUpdatePrice';
+  type: "PetUpdatePrice";
   payload: { price: number };
 };
 
 export type PetVaccinateCommand = {
-  type: 'PetVaccinate';
+  type: "PetVaccinate";
   payload: { date: string };
 };
 

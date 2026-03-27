@@ -156,15 +156,15 @@ Validated on a production scheduling SaaS (Duler):
 
 ## DDD Mapping
 
-| DDD Concept | dopespec |
-|---|---|
-| Aggregate | `model()` |
-| Value Object | `model.props` |
-| Command | `model.actions` |
-| Domain Event | generated from transitions |
-| Invariant | `model.constraints` |
-| Specification | `decisions()` |
-| Domain Service | `policy()` |
+| DDD Concept    | dopespec                   |
+| -------------- | -------------------------- |
+| Aggregate      | `model()`                  |
+| Value Object   | `model.props`              |
+| Command        | `model.actions`            |
+| Domain Event   | generated from transitions |
+| Invariant      | `model.constraints`        |
+| Specification  | `decisions()`              |
+| Domain Service | `policy()`                 |
 
 ## BDD
 
@@ -175,13 +175,13 @@ Every `.scenario()` in a model and every rule in `decisions()`/`policy()` auto-g
 pay: from(states.pending)
   .to(states.paid)
   .when((ctx) => ctx.total > 0)
-  .scenario({ total: 100 }, states.paid)
+  .scenario({ total: 100 }, states.paid);
 
 // Generated test:
 it('given {"total":100}, when pay, then status = paid', () => {
-  const ctx = { total: 100, status: 'pending' };
+  const ctx = { total: 100, status: "pending" };
   const result = OrderPay(ctx);
-  expect(result.status).toBe('paid');
+  expect(result.status).toBe("paid");
 });
 ```
 
