@@ -51,7 +51,18 @@ export const generateDecisionEvaluate = (def: DecisionDef): string => {
     }
   }
 
-  lines.push(`  throw new Error('No matching rule for ${name}');`);
+  // Only add throw if the last rule has conditions (no catch-all).
+  // DecisionRule.when is always an object (Partial<InferValues>), never undefined.
+  // Empty object {} = catch-all (matches everything), so no throw needed.
+  const lastRule = def.rules.at(-1);
+  const hasCatchAll =
+    lastRule !== undefined &&
+    Object.keys(lastRule.when).length === 0;
+
+  if (!hasCatchAll) {
+    lines.push(`  throw new Error('No matching rule for ${name}');`);
+  }
+
   lines.push(`}`);
   lines.push("");
 
