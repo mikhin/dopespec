@@ -187,6 +187,7 @@ it('given {"total":100}, when pay, then status = paid', () => {
 
 ## Roadmap
 
+- [ ] Array prop type (`dates: arrayOf(date())`) — needed for real-world models like excluded dates, tag lists
 - [ ] npm publish
 - [ ] Self-hosting (dopespec describes its own types in its own schema)
 - [ ] ESLint plugin (static analysis: unreachable states, dead actions, missing scenarios)
