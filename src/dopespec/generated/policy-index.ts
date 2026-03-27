@@ -1,6 +1,9 @@
 export const policyIndex = {
-  Invite: {
-    resend: ['OnlyOwnerCanResend'],
-    revoke: ['OnlyOwnerCanRevoke'],
+  PinnedShift: {
+    deleteOccurrence: ['NoPastWeekModificationOnDeleteOccurrence'],
+    editAllFuture: ['MaxMaterializationCapOnEditAllFuture', 'NoPastWeekModificationOnEditAllFuture'],
+    editThisOnly: ['NoPastWeekModificationOnEditThisOnly'],
+    pin: ['NoTerminatedMemberPin'],
+    unpin: ['MaxMaterializationCapOnUnpin', 'NoPastWeekModificationOnUnpin'],
   },
 } as const;
