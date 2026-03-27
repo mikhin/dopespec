@@ -1,8 +1,8 @@
-import type { OrderProps } from "./order.types.js";
+import type { OrderProps } from './order.types.js';
 
 export function validateCannotAddWhenCancelled(ctx: OrderProps): boolean {
   // guard=true means violation, so invariant negates it
-  return !(ctx.status === "cancelled");
+  return !(ctx.status === 'cancelled');
 }
 
 export function validateCannotRemoveWhenEmpty(ctx: OrderProps): boolean {
@@ -10,14 +10,9 @@ export function validateCannotRemoveWhenEmpty(ctx: OrderProps): boolean {
   return !(ctx.total === 0);
 }
 
-export function validateOrder(ctx: OrderProps): {
-  valid: boolean;
-  violations: string[];
-} {
+export function validateOrder(ctx: OrderProps): { valid: boolean; violations: string[] } {
   const violations: string[] = [];
-  if (!validateCannotAddWhenCancelled(ctx))
-    violations.push("cannotAddWhenCancelled");
-  if (!validateCannotRemoveWhenEmpty(ctx))
-    violations.push("cannotRemoveWhenEmpty");
+  if (!validateCannotAddWhenCancelled(ctx)) violations.push('cannotAddWhenCancelled');
+  if (!validateCannotRemoveWhenEmpty(ctx)) violations.push('cannotRemoveWhenEmpty');
   return { valid: violations.length === 0, violations };
 }

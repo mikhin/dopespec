@@ -1,39 +1,35 @@
-import type { OrderProps } from "./order.types.js";
+import type { OrderProps } from './order.types.js';
 
 export type OrderCancelEvent = {
-  type: "OrderCancel";
+  type: 'OrderCancel';
   payload: OrderProps;
-  from: "pending";
-  to: "cancelled";
+  from: 'pending';
+  to: 'cancelled';
   timestamp: Date;
 };
 
 export type OrderDeliverEvent = {
-  type: "OrderDeliver";
+  type: 'OrderDeliver';
   payload: OrderProps;
-  from: "shipped";
-  to: "delivered";
+  from: 'shipped';
+  to: 'delivered';
   timestamp: Date;
 };
 
 export type OrderPayEvent = {
-  type: "OrderPay";
+  type: 'OrderPay';
   payload: OrderProps;
-  from: "pending";
-  to: "paid";
+  from: 'pending';
+  to: 'paid';
   timestamp: Date;
 };
 
 export type OrderShipEvent = {
-  type: "OrderShip";
+  type: 'OrderShip';
   payload: OrderProps;
-  from: "paid";
-  to: "shipped";
+  from: 'paid';
+  to: 'shipped';
   timestamp: Date;
 };
 
-export type OrderEvent =
-  | OrderCancelEvent
-  | OrderDeliverEvent
-  | OrderPayEvent
-  | OrderShipEvent;
+export type OrderEvent = OrderCancelEvent | OrderDeliverEvent | OrderPayEvent | OrderShipEvent;

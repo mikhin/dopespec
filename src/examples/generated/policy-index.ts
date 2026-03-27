@@ -1,5 +1,5 @@
 export const policyIndex = {
   Order: {
-    addItem: ["NoSuspendedCustomerOrders"],
+    addItem: ['NoSuspendedCustomerOrders'],
   },
 } as const;
