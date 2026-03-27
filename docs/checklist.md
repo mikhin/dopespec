@@ -111,15 +111,20 @@ It does NOT cover async workflows, database queries in guards, side effects, or 
 - [ ] Cloud — paid SaaS: visual editor, collaboration, hosted diagrams, version history (future, needs BE+FE+DB)
 - [ ] CLI proves product works, Cloud sells convenience
 
+## Next Steps (priority order)
+
+1. [ ] Self-hosting — describe dopespec's own types and decision tables in its own schema format
+2. [ ] Describe Duler in dopespec — member permissions, pinned shifts, scheduling (first real-world validation)
+3. [ ] npm publish + README — make dopespec a public package
+4. [ ] First external customer adopts CLI as dev dependency
+
 ## Bootstrap Strategy
 
-- [ ] Self-hosting — generator built with itself, proof that product works
 - [x] v0 generator written by hand
 - [x] E2E proof — all 13 generators on pet-store compiled with strict tsc (test writes to temp dir, compiles, cleans up)
 - [x] CLI writes generated files to disk (`npx dopespec generate` → output directory)
-- [ ] Generator's own models described in its own schema
+- [ ] Generator's own models described in its own schema (= self-hosting)
 - [ ] v0 generates v1, v1 generates v2
-- [ ] First external customer adopts CLI as dev dependency, runs codegen in their repo
 
 ## Influenced By
 
