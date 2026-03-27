@@ -10,6 +10,8 @@ export type {
   StatesOf,
   TransitionHelpers,
 } from "./model.js";
+export { policy } from "./policy.js";
+export type { PolicyDef, PolicyRule } from "./policy.js";
 
 export {
   boolean,

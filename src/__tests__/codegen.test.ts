@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import type { DecisionDef } from "../schema/decisions.js";
 import type { ModelDef } from "../schema/model.js";
+import type { PolicyDef, PolicyRule } from "../schema/policy.js";
 
 import {
   generateCommands,
@@ -18,6 +19,10 @@ import {
   generateInvariants,
   generateMermaid,
   generateOrchestrators,
+  generatePolicyIndex,
+  generatePolicyMermaid,
+  generatePolicyTests,
+  generatePolicyValidator,
   generateTests,
   generateTransitions,
   generateTypes,
@@ -26,9 +31,16 @@ import {
 import {
   guardToSource,
   relationIdField,
+  resolvePolicyGuardBody,
   valueToSource,
 } from "../codegen/utils.js";
-import { CreditTier, Customer, Order, Pet } from "../examples/pet-store.js";
+import {
+  CreditTier,
+  Customer,
+  NoSuspendedCustomerOrders,
+  Order,
+  Pet,
+} from "../examples/pet-store.js";
 import { action } from "../schema/actions.js";
 import { decisions } from "../schema/decisions.js";
 import { model } from "../schema/model.js";
@@ -837,5 +849,183 @@ describe("generateDecisionTable", () => {
 
     // title, blank, header, separator, 3 data rows
     expect(lines).toHaveLength(7);
+  });
+});
+
+// --- Policy generators ---
+
+// Build model lookup for policy generators
+const policyModelLookup = new Map<string, ModelDef>();
+
+policyModelLookup.set("Customer", Customer as ModelDef);
+policyModelLookup.set("Order", Order as ModelDef);
+policyModelLookup.set("Pet", Pet as ModelDef);
+
+const petStorePolicy = NoSuspendedCustomerOrders as PolicyDef;
+
+describe("generatePolicyValidator", () => {
+  it("generates context type and validator function", () => {
+    const output = generatePolicyValidator([petStorePolicy], policyModelLookup);
+
+    expect(output).toContain("NoSuspendedCustomerOrdersContext");
+    expect(output).toContain("order: OrderProps");
+    expect(output).toContain("customer: CustomerProps");
+    expect(output).toContain("validateNoSuspendedCustomerOrders");
+    expect(output).toContain("violations");
+    expect(output).toContain("warnings");
+  });
+
+  it("imports types from convention paths", () => {
+    const output = generatePolicyValidator([petStorePolicy], policyModelLookup);
+
+    expect(output).toContain(
+      "import type { CustomerProps } from './customer.types.js'",
+    );
+    expect(output).toContain(
+      "import type { OrderProps } from './order.types.js'",
+    );
+  });
+
+  it("resolves closure references in guard bodies", () => {
+    const output = generatePolicyValidator([petStorePolicy], policyModelLookup);
+
+    // Should resolve customerStates.suspended → 'suspended'
+    expect(output).toContain("'suspended'");
+    expect(output).not.toContain("customerStates");
+  });
+
+  it("maps prevent to violations and warn to warnings", () => {
+    const output = generatePolicyValidator([petStorePolicy], policyModelLookup);
+
+    // prevent → violations with stable policyName:rule_N ID
+    expect(output).toContain(
+      "violations.push('NoSuspendedCustomerOrders:rule_0')",
+    );
+    // warn → warnings
+    expect(output).toContain(
+      "warnings.push('NoSuspendedCustomerOrders:rule_1')",
+    );
+  });
+
+  it("returns empty string for empty policies", () => {
+    expect(generatePolicyValidator([], policyModelLookup)).toBe("");
+  });
+});
+
+describe("generatePolicyIndex", () => {
+  it("generates index with model+action mapping", () => {
+    const output = generatePolicyIndex([petStorePolicy]);
+
+    expect(output).toContain("policyIndex");
+    expect(output).toContain("Order");
+    expect(output).toContain("addItem");
+    expect(output).toContain("NoSuspendedCustomerOrders");
+    expect(output).toContain("as const");
+  });
+
+  it("returns empty string for empty policies", () => {
+    expect(generatePolicyIndex([])).toBe("");
+  });
+});
+
+describe("generatePolicyTests", () => {
+  it("generates vitest integration tests", () => {
+    const output = generatePolicyTests(
+      "order",
+      [petStorePolicy],
+      policyModelLookup,
+    );
+
+    expect(output).toContain("import { describe, it, expect } from 'vitest'");
+    expect(output).toContain("validateNoSuspendedCustomerOrders");
+    expect(output).toContain("describe('NoSuspendedCustomerOrders'");
+    expect(output).toContain("expect(result");
+  });
+
+  it("generates one test per rule", () => {
+    const output = generatePolicyTests(
+      "order",
+      [petStorePolicy],
+      policyModelLookup,
+    );
+
+    const matches = output.match(/it\('/g);
+
+    expect(matches).toHaveLength(2);
+  });
+
+  it("tests prevent rules with valid=false", () => {
+    const output = generatePolicyTests(
+      "order",
+      [petStorePolicy],
+      policyModelLookup,
+    );
+
+    expect(output).toContain("expect(result.valid).toBe(false)");
+    expect(output).toContain(
+      "expect(result.violations).toContain('NoSuspendedCustomerOrders:rule_0')",
+    );
+  });
+
+  it("tests warn rules with warnings", () => {
+    const output = generatePolicyTests(
+      "order",
+      [petStorePolicy],
+      policyModelLookup,
+    );
+
+    expect(output).toContain(
+      "expect(result.warnings).toContain('NoSuspendedCustomerOrders:rule_1')",
+    );
+  });
+
+  it("returns empty string for empty policies", () => {
+    expect(generatePolicyTests("order", [], policyModelLookup)).toBe("");
+  });
+});
+
+describe("generatePolicyMermaid", () => {
+  it("generates Mermaid interaction diagram", () => {
+    const output = generatePolicyMermaid("order", [petStorePolicy]);
+
+    expect(output).toContain("graph LR");
+    expect(output).toContain("Customer");
+    expect(output).toContain("Order");
+    expect(output).toContain("NoSuspendedCustomerOrders");
+    expect(output).toContain("addItem");
+  });
+
+  it("shows relation kind", () => {
+    const output = generatePolicyMermaid("order", [petStorePolicy]);
+
+    expect(output).toContain("belongsTo");
+  });
+
+  it("shows effect type", () => {
+    const output = generatePolicyMermaid("order", [petStorePolicy]);
+
+    expect(output).toContain("prevent/warn");
+  });
+
+  it("returns empty string for empty policies", () => {
+    expect(generatePolicyMermaid("order", [])).toBe("");
+  });
+});
+
+describe("resolvePolicyGuardBody", () => {
+  it("resolves nested closure references", () => {
+    const states = { active: "active", suspended: "suspended" };
+    const guard: PolicyRule["when"] = (ctx) =>
+      ctx.customer.status === states.suspended;
+    const body = guardToSource(
+      guard as (ctx: Record<string, unknown>) => unknown,
+    );
+
+    const resolved = resolvePolicyGuardBody(guard, body, {
+      customer: Customer as ModelDef,
+    });
+
+    expect(resolved).toContain("'suspended'");
+    expect(resolved).not.toContain("states.suspended");
   });
 });

@@ -60,14 +60,14 @@ It does NOT cover async workflows, database queries in guards, side effects, or 
 - [x] ModelDef.props is always optional even when model was created with props — tighten with conditional type
 - [x] Two-folder output: generated/ (always overwrite) + src/ (orchestrators, e2e-stubs — generate-once, warn on new handlers)
 
-### policy() generators — designed, next to build
+### policy() generators — ✅ all done
 
-- [ ] policy() schema builder (on, requires, rules with prevent/warn, collections)
-- [ ] Policy validator per model (shiftassignment.policies.ts)
-- [ ] policyIndex (all policies per model+action)
-- [ ] Integration tests from policy scenarios
-- [ ] Auto-include validation TODO in orchestrators
-- [ ] Interaction diagrams (Mermaid)
+- [x] policy() schema builder (on, requires, rules with prevent/warn, collections)
+- [x] Policy validator per model (shiftassignment.policies.ts)
+- [x] policyIndex (all policies per model+action)
+- [x] Integration tests from policy scenarios
+- [x] Auto-include validation TODO in orchestrators
+- [x] Interaction diagrams (Mermaid)
 
 ## ESLint Plugin (future, not MVP)
 

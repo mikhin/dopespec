@@ -10,6 +10,7 @@ import { action } from "../schema/actions.js";
 import { rule } from "../schema/constraints.js";
 import { decisions } from "../schema/decisions.js";
 import { model } from "../schema/model.js";
+import { policy } from "../schema/policy.js";
 import {
   boolean,
   date,
@@ -836,5 +837,218 @@ describe("decisions", () => {
         rules: [{ then: { a: 1 }, when: { x: 1 } }],
       }),
     ).toThrow('missing output key "b"');
+  });
+});
+
+// --- policy() ---
+
+describe("policy", () => {
+  const targetModel = model("Order", {
+    actions: { addItem: action() },
+    props: { status: lifecycle(["pending", "paid"] as const), total: number() },
+  });
+  const relatedModel = model("Customer", {
+    props: {
+      name: string(),
+      status: lifecycle(["active", "suspended"] as const),
+    },
+  });
+
+  it("creates a valid PolicyDef", () => {
+    const p = policy("NoBadCustomers", {
+      on: { action: "addItem", model: targetModel },
+      requires: { customer: belongsTo(relatedModel) },
+      rules: [
+        {
+          effect: "prevent",
+          when: (ctx) => ctx.customer.status === "suspended",
+        },
+      ],
+    });
+
+    expect(p.kind).toBe("policy");
+    expect(p.name).toBe("NoBadCustomers");
+    expect(p.on.model.name).toBe("Order");
+    expect(p.on.action).toBe("addItem");
+    expect(Object.keys(p.requires)).toEqual(["customer"]);
+    expect(p.rules).toHaveLength(1);
+    expect(p.rules[0]?.effect).toBe("prevent");
+  });
+
+  it("supports warn effect", () => {
+    const p = policy("WarnOnSuspended", {
+      on: { action: "addItem", model: targetModel },
+      requires: { customer: belongsTo(relatedModel) },
+      rules: [
+        { effect: "warn", when: (ctx) => ctx.customer.status === "suspended" },
+      ],
+    });
+
+    expect(p.rules[0]?.effect).toBe("warn");
+  });
+
+  it("supports hasMany in requires (collections)", () => {
+    const p = policy("LimitItems", {
+      on: { action: "addItem", model: targetModel },
+      requires: { items: hasMany(relatedModel) },
+      rules: [{ effect: "prevent", when: (ctx) => ctx.items.length > 10 }],
+    });
+
+    expect(p.requires["items"]?.kind).toBe("hasMany");
+  });
+
+  it("supports multiple rules", () => {
+    const p = policy("MultiRule", {
+      on: { action: "addItem", model: targetModel },
+      requires: { customer: belongsTo(relatedModel) },
+      rules: [
+        {
+          effect: "prevent",
+          when: (ctx) => ctx.customer.status === "suspended",
+        },
+        { effect: "warn", when: (ctx) => ctx.customer.name === "" },
+      ],
+    });
+
+    expect(p.rules).toHaveLength(2);
+    expect(p.rules[0]?.effect).toBe("prevent");
+    expect(p.rules[1]?.effect).toBe("warn");
+  });
+
+  it("trims whitespace from name", () => {
+    const p = policy("  Spaced  ", {
+      on: { action: "addItem", model: targetModel },
+      requires: { customer: belongsTo(relatedModel) },
+      rules: [
+        { effect: "prevent", when: (ctx) => ctx.customer.status === "x" },
+      ],
+    });
+
+    expect(p.name).toBe("Spaced");
+  });
+
+  it("throws on empty name", () => {
+    expect(() =>
+      policy("", {
+        on: { action: "addItem", model: targetModel },
+        requires: { customer: belongsTo(relatedModel) },
+        rules: [{ effect: "prevent", when: () => true }],
+      }),
+    ).toThrow("non-empty name");
+  });
+
+  it("throws on empty action", () => {
+    expect(() =>
+      policy("Bad", {
+        on: { action: "", model: targetModel },
+        requires: { customer: belongsTo(relatedModel) },
+        rules: [{ effect: "prevent", when: () => true }],
+      }),
+    ).toThrow("non-empty string");
+  });
+
+  it("throws on action not defined on model", () => {
+    expect(() =>
+      policy("Bad", {
+        on: { action: "nonExistent", model: targetModel },
+        requires: { customer: belongsTo(relatedModel) },
+        rules: [{ effect: "prevent", when: () => true }],
+      }),
+    ).toThrow('"nonExistent" is not a defined action');
+  });
+
+  it("skips action validation for ref() models", () => {
+    // ref() models don't have actions at definition time — no error
+    const p = policy("WithRef", {
+      on: { action: "anything", model: ref("FutureModel") },
+      requires: { customer: belongsTo(relatedModel) },
+      rules: [
+        {
+          effect: "prevent",
+          when: (ctx) => ctx.customer.status === "suspended",
+        },
+      ],
+    });
+
+    expect(p.on.action).toBe("anything");
+  });
+
+  it("throws on invalid model ref", () => {
+    expect(() =>
+      policy("Bad", {
+        // @ts-expect-error -- intentionally passing invalid model
+        on: { action: "x", model: { name: "Fake" } },
+        requires: { customer: belongsTo(relatedModel) },
+        rules: [{ effect: "prevent", when: () => true }],
+      }),
+    ).toThrow("model() or ref()");
+  });
+
+  it("throws on empty requires", () => {
+    expect(() =>
+      policy("Bad", {
+        on: { action: "addItem", model: targetModel },
+        requires: {},
+        rules: [{ effect: "prevent", when: () => true }],
+      }),
+    ).toThrow("at least one entry");
+  });
+
+  it("throws on no rules", () => {
+    expect(() =>
+      policy("Bad", {
+        on: { action: "addItem", model: targetModel },
+        requires: { customer: belongsTo(relatedModel) },
+        rules: [],
+      }),
+    ).toThrow("at least one rule");
+  });
+
+  it("throws on invalid effect", () => {
+    expect(() =>
+      policy("Bad", {
+        on: { action: "addItem", model: targetModel },
+        requires: { customer: belongsTo(relatedModel) },
+        // @ts-expect-error -- intentionally passing invalid effect
+        rules: [{ effect: "block", when: () => true }],
+      }),
+    ).toThrow('"prevent" or "warn"');
+  });
+
+  it("throws on non-function when", () => {
+    expect(() =>
+      policy("Bad", {
+        on: { action: "addItem", model: targetModel },
+        requires: { customer: belongsTo(relatedModel) },
+        // @ts-expect-error -- intentionally passing invalid when
+        rules: [{ effect: "prevent", when: "not a fn" }],
+      }),
+    ).toThrow("must be a function");
+  });
+
+  it("throws on invalid requires entry", () => {
+    expect(() =>
+      policy("Bad", {
+        on: { action: "addItem", model: targetModel },
+        // @ts-expect-error -- intentionally passing invalid requires
+        requires: { customer: { kind: "invalid" } },
+        rules: [{ effect: "prevent", when: () => true }],
+      }),
+    ).toThrow("belongsTo() or hasMany()");
+  });
+
+  it("accepts ref() in on.model", () => {
+    const p = policy("WithRef", {
+      on: { action: "create", model: ref("FutureModel") },
+      requires: { customer: belongsTo(relatedModel) },
+      rules: [
+        {
+          effect: "prevent",
+          when: (ctx) => ctx.customer.status === "suspended",
+        },
+      ],
+    });
+
+    expect(p.on.model.name).toBe("FutureModel");
   });
 });

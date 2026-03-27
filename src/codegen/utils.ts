@@ -1,6 +1,7 @@
 import type { ActionDef } from "../schema/actions.js";
 import type { ConstraintData } from "../schema/constraints.js";
 import type { ModelDef } from "../schema/model.js";
+import type { PolicyDef } from "../schema/policy.js";
 import type { PropDef } from "../schema/props.js";
 import type { RelationDef } from "../schema/relations.js";
 import type { TransitionData } from "../schema/transitions.js";
@@ -269,36 +270,7 @@ export const resolveGuardBody = (
   const REF_EQ_CTX = /(?!ctx\.)([a-zA-Z_$]\w*\.\w+)\s*={2,3}\s*ctx\.(\w+)/g;
 
   // Build once, reuse across all tryResolve calls.
-  const defaults: Record<string, unknown> = {};
-
-  if (model.props) {
-    for (const [key, prop] of Object.entries(model.props)) {
-      switch (prop.kind) {
-        case "boolean":
-          defaults[key] = false;
-          break;
-
-        case "date":
-          defaults[key] = new Date(0);
-          break;
-
-        case "lifecycle":
-        // fall through
-
-        case "oneOf":
-          defaults[key] = (prop.values as readonly string[])[0] ?? "";
-          break;
-
-        case "number":
-          defaults[key] = 0;
-          break;
-
-        case "string":
-          defaults[key] = "";
-          break;
-      }
-    }
-  }
+  const defaults = buildModelDefaults(model);
 
   const tryResolve = (propName: string): string | undefined => {
     const prop = model.props?.[propName];
@@ -392,4 +364,122 @@ export const fieldsToTSType = (
     .join("; ");
 
   return `{ ${props} }`;
+};
+
+/**
+ * Build default values for all props in a model (as runtime JS values, not source).
+ * Used by resolvePolicyGuardBody to probe guard functions.
+ */
+export const buildModelDefaults = (
+  model: ModelDef,
+): Record<string, unknown> => {
+  const defaults: Record<string, unknown> = {};
+
+  if (!model.props) return defaults;
+
+  for (const [key, prop] of Object.entries(model.props)) {
+    switch (prop.kind) {
+      case "boolean":
+        defaults[key] = false;
+        break;
+
+      case "date":
+        defaults[key] = new Date(0);
+        break;
+
+      case "lifecycle":
+      // fall through
+
+      case "oneOf":
+        defaults[key] = (prop.values as readonly string[])[0] ?? "";
+        break;
+
+      case "number":
+        defaults[key] = 0;
+        break;
+
+      case "string":
+        defaults[key] = "";
+        break;
+    }
+  }
+
+  return defaults;
+};
+
+/**
+ * Resolve external closure references in a policy guard body.
+ *
+ * Policy guards access nested ctx: `ctx.customer.status === customerStates.suspended`.
+ * This function resolves `customerStates.suspended` to `'suspended'` by probing the
+ * guard function with known enum values from the required models.
+ *
+ * @param guard - The guard function (closure with captured variables)
+ * @param body - Raw guard body from guardToSource
+ * @param requiresModels - Map of requires key → resolved ModelDef
+ */
+export const resolvePolicyGuardBody = (
+  guard: PolicyDef["rules"][number]["when"],
+  body: string,
+  requiresModels: Record<string, ModelDef>,
+): string => {
+  // Match ctx.KEY.PROP === externalRef (not ctx., not literal)
+  const CTX_NESTED_EQ_REF =
+    /ctx\.(\w+)\.(\w+)\s*={2,3}\s*(?!ctx\.|['"`\d])([a-zA-Z_$]\w*\.\w+)/g;
+  // Match externalRef === ctx.KEY.PROP (reversed operand order)
+  const REF_EQ_CTX_NESTED =
+    // eslint-disable-next-line sonarjs/slow-regex -- input is a short guard body, not user-supplied
+    /(?!ctx\.)([a-zA-Z_$]\w*\.\w+)\s*={2,3}\s*ctx\.(\w+)\.(\w+)/g;
+
+  const tryResolve = (reqKey: string, propName: string): string | undefined => {
+    const model = requiresModels[reqKey];
+
+    if (!model?.props) return undefined;
+
+    const prop = model.props[propName];
+
+    if (!prop || (prop.kind !== "lifecycle" && prop.kind !== "oneOf"))
+      return undefined;
+
+    const values = prop.values as readonly string[];
+    const defaults = buildModelDefaults(model);
+
+    for (const value of values) {
+      try {
+        const ctx = { [reqKey]: { ...defaults, [propName]: value } };
+
+        if (guard(ctx) === true) {
+          return `'${value}'`;
+        }
+      } catch {
+        /* guard may access missing props, skip */
+      }
+    }
+
+    return undefined;
+  };
+
+  let resolved = body;
+
+  // ctx.key.prop === externalRef
+  resolved = resolved.replace(
+    CTX_NESTED_EQ_REF,
+    (match, reqKey, propName, refStr) => {
+      const value = tryResolve(reqKey as string, propName as string);
+
+      return value ? match.replace(refStr as string, value) : match;
+    },
+  );
+
+  // externalRef === ctx.key.prop
+  resolved = resolved.replace(
+    REF_EQ_CTX_NESTED,
+    (match, refStr, reqKey, propName) => {
+      const value = tryResolve(reqKey as string, propName as string);
+
+      return value ? match.replace(refStr as string, value) : match;
+    },
+  );
+
+  return resolved;
 };

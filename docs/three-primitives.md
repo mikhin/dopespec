@@ -28,19 +28,20 @@ inputs, outputs, rules (when → then)
 
 **Key design:** decisions() inputs can reference model props directly via shared const (e.g. `petProps.species`). This ensures type-level link — changing model props forces decision table review at compile time.
 
-## `policy()` — rule between entities (DESIGNED, NOT BUILT)
+## `policy()` — rule between entities ✅ BUILT
 
 ```
 on (model + action), requires (belongsTo/hasMany), rules [{ when, effect }]
 ```
 
-**Will generate:** policy validator per model, integration tests, policyIndex, Mermaid interaction diagram
+**Generates:** policy validator per model, integration tests, policyIndex, Mermaid interaction diagram
 
 **DDD:** Domain Service / Policy
 
 **Use cases:** cross-aggregate constraints, WIP limits, role restrictions
 
 **API design decided (independent reviewer vote):**
+
 - Array style rules `[{ when, effect }]` (like decisions, not callback)
 - Both `prevent` and `warn` effects
 - Collections in requires via `hasMany()` (for aggregation rules)
@@ -95,5 +96,5 @@ dopespec covers: entity state + transitions + access control + cross-model invar
 
 1. `model()` — ✅ done (10 generators)
 2. `decisions()` — ✅ done (schema builder + 3 generators: evaluate, tests, markdown table)
-3. Cross-model (`policy()` or extended constraints) — needed for Duler, design not decided
+3. `policy()` — ✅ done (schema builder + 4 generators: validator, tests, index, mermaid)
 4. `process()` / sagas — if multi-step workflows are ever needed

@@ -10,6 +10,7 @@ import {
   number,
   oneOf,
   optional,
+  policy,
   string,
 } from "../schema/index.js";
 
@@ -151,4 +152,31 @@ const PetAdoptionFee = decisions("PetAdoptionFee", {
   ],
 });
 
-export { CreditTier, Customer, Order, Pet, PetAdoptionFee };
+// --- NoSuspendedCustomerOrders (policy: cross-model rule) ---
+// Prevents adding items to orders when the customer is suspended or deleted.
+
+const NoSuspendedCustomerOrders = policy("NoSuspendedCustomerOrders", {
+  on: { action: "addItem", model: Order },
+  requires: {
+    customer: belongsTo(Customer),
+  },
+  rules: [
+    {
+      effect: "prevent",
+      when: (ctx) => ctx.customer.status === customerStates.suspended,
+    },
+    {
+      effect: "warn",
+      when: (ctx) => ctx.customer.status === customerStates.deleted,
+    },
+  ],
+});
+
+export {
+  CreditTier,
+  Customer,
+  NoSuspendedCustomerOrders,
+  Order,
+  Pet,
+  PetAdoptionFee,
+};

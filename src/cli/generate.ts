@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 
 import type { DecisionDef } from "../schema/decisions.js";
 import type { ModelDef } from "../schema/model.js";
+import type { PolicyDef } from "../schema/policy.js";
 
 import {
   generateCommands,
@@ -15,6 +16,10 @@ import {
   generateInvariants,
   generateMermaid,
   generateOrchestrators,
+  generatePolicyIndex,
+  generatePolicyMermaid,
+  generatePolicyTests,
+  generatePolicyValidator,
   generateTests,
   generateTransitions,
   generateTypes,
@@ -68,27 +73,42 @@ export async function main(): Promise<void> {
   const schemaUrl = pathToFileURL(resolved).href;
   const mod = (await import(schemaUrl)) as Record<string, unknown>;
 
-  // Collect models and decisions from exports
+  // Collect models, decisions, and policies from exports
   const models: { def: ModelDef; name: string }[] = [];
   const decisionDefs: { def: DecisionDef; name: string }[] = [];
+  const policyDefs: { def: PolicyDef; name: string }[] = [];
 
   for (const value of Object.values(mod)) {
     if (isModelDef(value)) {
       models.push({ def: value, name: value.name.toLowerCase() });
     } else if (isDecisionDef(value)) {
       decisionDefs.push({ def: value, name: value.name.toLowerCase() });
+    } else if (isPolicyDef(value)) {
+      policyDefs.push({ def: value, name: value.name.toLowerCase() });
     }
   }
 
-  if (models.length === 0 && decisionDefs.length === 0) {
-    console.error("No model() or decisions() exports found in schema file.");
+  if (
+    models.length === 0 &&
+    decisionDefs.length === 0 &&
+    policyDefs.length === 0
+  ) {
+    console.error(
+      "No model(), decisions(), or policy() exports found in schema file.",
+    );
     process.exit(1);
   }
 
   console.log(`Generating into ${generatedPath}/`);
   console.log(`User code into  ${srcPath}/\n`);
 
-  const counts = generate(models, decisionDefs, generatedPath, srcPath);
+  const counts = generate(
+    models,
+    decisionDefs,
+    policyDefs,
+    generatedPath,
+    srcPath,
+  );
 
   const parts = [`${String(counts.generated)} in generated/`];
 
@@ -103,9 +123,38 @@ export async function main(): Promise<void> {
   }
 }
 
+function buildPolicyByModelAction(
+  policyDefs: { def: PolicyDef; name: string }[],
+): Map<string, Map<string, string[]>> {
+  const result = new Map<string, Map<string, string[]>>();
+
+  for (const p of policyDefs) {
+    const modelName = p.def.on.model.name;
+
+    let actions = result.get(modelName);
+
+    if (!actions) {
+      actions = new Map();
+      result.set(modelName, actions);
+    }
+
+    let policyNames = actions.get(p.def.on.action);
+
+    if (!policyNames) {
+      policyNames = [];
+      actions.set(p.def.on.action, policyNames);
+    }
+
+    policyNames.push(p.def.name);
+  }
+
+  return result;
+}
+
 function generate(
   models: { def: ModelDef; name: string }[],
   decisionDefs: { def: DecisionDef; name: string }[],
+  policyDefs: { def: PolicyDef; name: string }[],
   generatedPath: string,
   srcPath: string,
 ): { generated: number; skipped: number; src: number } {
@@ -116,6 +165,16 @@ function generate(
   let skipped = 0;
   let src = 0;
 
+  // Build model lookup for policy generators
+  const modelLookup = new Map<string, ModelDef>();
+
+  for (const m of models) {
+    modelLookup.set(m.def.name, m.def);
+  }
+
+  // Build policy lookup for orchestrator generator
+  const policyByModelAction = buildPolicyByModelAction(policyDefs);
+
   for (const m of models) {
     generated += writeGeneratedFiles(
       m.name,
@@ -125,7 +184,12 @@ function generate(
       "generated",
     );
 
-    const srcResult = writeSrcFiles(m.name, m.def, srcPath);
+    const srcResult = writeSrcFiles(
+      m.name,
+      m.def,
+      srcPath,
+      policyByModelAction.get(m.def.name),
+    );
 
     src += srcResult.written;
     skipped += srcResult.skipped;
@@ -141,7 +205,68 @@ function generate(
     );
   }
 
+  // --- Policy generators ---
+  generated += generatePolicies(policyDefs, modelLookup, generatedPath);
+
   return { generated, skipped, src };
+}
+
+function generatePolicies(
+  policyDefs: { def: PolicyDef; name: string }[],
+  modelLookup: Map<string, ModelDef>,
+  generatedPath: string,
+): number {
+  if (policyDefs.length === 0) return 0;
+
+  let generated = 0;
+
+  // Group policies by target model
+  const policyByModel = new Map<string, PolicyDef[]>();
+
+  for (const p of policyDefs) {
+    const targetName = p.def.on.model.name.toLowerCase();
+
+    let policies = policyByModel.get(targetName);
+
+    if (!policies) {
+      policies = [];
+      policyByModel.set(targetName, policies);
+    }
+
+    policies.push(p.def);
+  }
+
+  // Per-model policy files
+  for (const [targetName, policies] of policyByModel) {
+    generated += writePolicyFile(
+      generatedPath,
+      `${targetName}.policies.ts`,
+      generatePolicyValidator(policies, modelLookup),
+    );
+
+    generated += writePolicyFile(
+      generatedPath,
+      `${targetName}.policy.test.ts`,
+      generatePolicyTests(targetName, policies, modelLookup),
+    );
+
+    generated += writePolicyFile(
+      generatedPath,
+      `${targetName}.policy-mermaid.md`,
+      generatePolicyMermaid(targetName, policies),
+    );
+  }
+
+  // Single policy index file
+  const allPolicies = policyDefs.map((p) => p.def);
+
+  generated += writePolicyFile(
+    generatedPath,
+    "policy-index.ts",
+    generatePolicyIndex(allPolicies),
+  );
+
+  return generated;
 }
 
 function isDecisionDef(value: unknown): value is DecisionDef {
@@ -159,6 +284,15 @@ function isModelDef(value: unknown): value is ModelDef {
     value !== null &&
     "kind" in value &&
     (value as { kind: unknown }).kind === "model"
+  );
+}
+
+function isPolicyDef(value: unknown): value is PolicyDef {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "kind" in value &&
+    (value as { kind: unknown }).kind === "policy"
   );
 }
 
@@ -250,16 +384,33 @@ function writeGeneratedFiles<T>(
   return count;
 }
 
+function writePolicyFile(
+  outPath: string,
+  filename: string,
+  content: string,
+): number {
+  if (!content) return 0;
+
+  writeFileSync(join(outPath, filename), content);
+  console.log(`  generated/${filename}`);
+
+  return 1;
+}
+
 function writeSrcFiles(
   name: string,
   def: ModelDef,
   srcPath: string,
+  policyActions?: Map<string, string[]>,
 ): { skipped: number; written: number } {
   let written = 0;
   let skipped = 0;
 
   for (const gen of srcGenerators) {
-    const content = gen.fn(def);
+    const content =
+      gen.ext === "orchestrators.ts"
+        ? generateOrchestrators(def, policyActions)
+        : gen.fn(def);
 
     if (!content) continue;
 

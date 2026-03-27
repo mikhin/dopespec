@@ -175,7 +175,7 @@ Cross-model validation. Checks related entities before allowing an action.
 const NoTerminatedAssignments = policy("NoTerminatedAssignments", {
   on: { model: ShiftAssignment, action: "create" },
   requires: {
-    member: belongsTo(Member),           // single entity
+    member: belongsTo(Member), // single entity
     existingShifts: hasMany(ShiftAssignment), // collection
   },
   rules: [
@@ -186,6 +186,7 @@ const NoTerminatedAssignments = policy("NoTerminatedAssignments", {
 ```
 
 **Design decisions (voted by independent reviewers):**
+
 - Array style rules (like decisions, not callback like model)
 - Both `prevent` (blocks action) and `warn` (logs, doesn't block)
 - Collections supported in requires (hasMany for aggregation rules)

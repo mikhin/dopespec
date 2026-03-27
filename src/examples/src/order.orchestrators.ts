@@ -4,6 +4,7 @@ export function handleOrderAddItem(
   ctx: OrderProps,
   _payload: { productId: string; quantity: number },
 ): OrderProps {
+  // TODO: validate policies (NoSuspendedCustomerOrders)
   // TODO: implement addItem
   return ctx;
 }

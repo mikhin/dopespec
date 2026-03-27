@@ -2,8 +2,14 @@ import type { ModelDef } from "../schema/model.js";
 
 import { capitalize, fieldsToTSType, getActions } from "./utils.js";
 
-/** Generate service orchestrator skeletons from a model's actions. */
-export const generateOrchestrators = (model: ModelDef): string => {
+/**
+ * Generate service orchestrator skeletons from a model's actions.
+ * @param policyActions — optional map of action → policy names for TODO comments
+ */
+export const generateOrchestrators = (
+  model: ModelDef,
+  policyActions?: Map<string, string[]>,
+): string => {
   const actions = getActions(model);
 
   if (actions.length === 0) return "";
@@ -26,6 +32,13 @@ export const generateOrchestrators = (model: ModelDef): string => {
     lines.push(
       `export function ${fnName}(ctx: ${propsType}, _payload: ${payloadType}): ${propsType} {`,
     );
+
+    const policyNames = policyActions?.get(name);
+
+    if (policyNames && policyNames.length > 0) {
+      lines.push(`  // TODO: validate policies (${policyNames.join(", ")})`);
+    }
+
     lines.push(`  // TODO: implement ${name}`);
     lines.push(`  return ctx;`);
     lines.push(`}`);
