@@ -71,12 +71,10 @@ scenario — given → when → then
 ## Alternatives considered
 
 - **`interaction()` as a fourth primitive** — deferred. Could be `policy()` without rules, or could remain separate. See `docs/deprecated/new-primitives.md` for original design.
-- **`policy()` as a standalone primitive** — one option for cross-model rules. Simpler to implement than extending model().
-- **Extending `model.constraints` with `.requires()`** — alternative to policy(). All rules in one place, but harder type work (InferContext redesign).
+- **`policy()` as a standalone primitive** — chosen. Simpler to implement than extending model(), clean separation of concerns.
+- **Extending `model.constraints` with `.requires()`** — rejected. Breaks type system (InferContext, guardToSource, resolveGuardBody).
 - **One generic primitive** — rejected. TypeScript generics can't discriminate well enough. API becomes unreadable with 50% dead fields.
-- **Two primitives only (model + decisions)** — still possible if cross-model rules aren't needed or can be handled by extended constraints.
-
-Cross-model design (policy vs interaction vs extended constraints) is **not decided**. Will be resolved when a real use case demands it.
+- **Two primitives only (model + decisions)** — rejected. Cross-model rules are needed for real-world use cases.
 
 See `docs/deprecated/cross-aggregate-rules-analysis.md` for detailed analysis of cross-model approaches.
 

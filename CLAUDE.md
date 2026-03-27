@@ -81,7 +81,7 @@ src/
   examples/     — pet store example
 ```
 
-Public exports: `model`, `lifecycle`, `oneOf`, `optional`, `string`, `number`, `boolean`, `date`, `action`, `hasMany`, `belongsTo`, `ref`.
+Public exports: `model`, `lifecycle`, `oneOf`, `optional`, `string`, `number`, `boolean`, `date`, `action`, `hasMany`, `belongsTo`, `ref`, `decisions`, `policy`.
 Internal (used via model() callbacks, not exported from index): `from`, `rule`, `createTypedFrom`, `createTypedRule`.
 
 ## Design Rules
@@ -117,6 +117,10 @@ generated/                      ← always overwritten by CLI, git-ignored
   credittier.evaluate.ts
   credittier.decision-tests.ts
   credittier.decision-table.md
+  order.policies.ts
+  order.policy.test.ts
+  order.policy-mermaid.md
+  policy-index.ts
 
 src/                            ← user code, never touched by CLI
   order.orchestrators.ts        ← generated once if missing, user fills TODOs
@@ -167,7 +171,7 @@ Generates: evaluate function, unit tests (one per rule), markdown table.
 
 See `docs/three-primitives.md` for full architecture decision (model + decisions + future cross-model).
 
-## `policy()` — Cross-Model Rules (designed, not built)
+## `policy()` — Cross-Model Rules
 
 Cross-model validation. Checks related entities before allowing an action.
 
@@ -190,12 +194,13 @@ const NoTerminatedAssignments = policy("NoTerminatedAssignments", {
 - Array style rules (like decisions, not callback like model)
 - Both `prevent` (blocks action) and `warn` (logs, doesn't block)
 - Collections supported in requires (hasMany for aggregation rules)
-- `on: { model, action }` required — binds policy to specific model+action
+- `on: { model, action }` required — binds policy to specific model+action; action validated against model's defined actions at runtime
 - Per-model files: `shiftassignment.policies.ts`
 - Generated policyIndex listing all policies per model+action
 - Auto-include policy validation in generated orchestrators (as TODO)
+- Stable violation IDs: `{policyName}:rule_{i}`
 
-Generates: policy validator, integration tests, policyIndex, Mermaid interaction diagram.
+Generates: policy validator (typed context + validate function), integration tests (one per rule), policyIndex, Mermaid interaction diagram.
 
 ## Bootstrap Goal
 
