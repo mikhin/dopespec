@@ -184,3 +184,15 @@ it('given {"total":100}, when pay, then status = paid', () => {
   expect(result.status).toBe('paid');
 });
 ```
+
+## Roadmap
+
+- [ ] npm publish
+- [ ] Self-hosting (dopespec describes its own types in its own schema)
+- [ ] ESLint plugin (static analysis: unreachable states, dead actions, missing scenarios)
+- [ ] Non-tech participation (diagrams + markdown tables readable by PM/designers)
+- [ ] Visual editor (Cloud, paid)
+
+## Influenced By
+
+Prisma, XState, Cucumber/Gherkin, Decision Tables (BRMS), Nick Tune DSL, OpenAPI, Specification by Example, Clean Architecture.
