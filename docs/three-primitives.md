@@ -28,24 +28,28 @@ inputs, outputs, rules (when → then)
 
 **Key design:** decisions() inputs can reference model props directly via shared const (e.g. `petProps.species`). This ensures type-level link — changing model props forces decision table review at compile time.
 
-## `policy()` — rule between entities (DEFERRED)
+## `policy()` — rule between entities (DESIGNED, NOT BUILT)
 
 ```
-on (model + action), requires (relations), rules (optional), scenarios
+on (model + action), requires (belongsTo/hasMany), rules [{ when, effect }]
 ```
 
-**Will generate:** policy validator, integration tests, interaction diagram
+**Will generate:** policy validator per model, integration tests, policyIndex, Mermaid interaction diagram
 
 **DDD:** Domain Service / Policy
 
 **Use cases:** cross-aggregate constraints, WIP limits, role restrictions
 
-**Status:** Design direction only. Two implementation options remain open:
+**API design decided (independent reviewer vote):**
+- Array style rules `[{ when, effect }]` (like decisions, not callback)
+- Both `prevent` and `warn` effects
+- Collections in requires via `hasMany()` (for aggregation rules)
+- `on: { model, action }` required
+- Per-model output files: `shiftassignment.policies.ts`
+- policyIndex generated listing all policies per model+action
+- Auto-include validation in orchestrators as TODO
 
-1. `policy()` as a standalone primitive (simpler to implement)
-2. Extending `model.constraints` with `.requires()` (all rules in one place, but harder type work)
-
-Decision deferred until there is a real cross-model use case to validate against.
+**`.requires()` in model.constraints rejected** — breaks type system (InferContext, guardToSource, resolveGuardBody). See CLAUDE.md for full API example.
 
 ## Why these three
 

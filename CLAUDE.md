@@ -167,6 +167,35 @@ Generates: evaluate function, unit tests (one per rule), markdown table.
 
 See `docs/three-primitives.md` for full architecture decision (model + decisions + future cross-model).
 
+## `policy()` — Cross-Model Rules (designed, not built)
+
+Cross-model validation. Checks related entities before allowing an action.
+
+```typescript
+const NoTerminatedAssignments = policy("NoTerminatedAssignments", {
+  on: { model: ShiftAssignment, action: "create" },
+  requires: {
+    member: belongsTo(Member),           // single entity
+    existingShifts: hasMany(ShiftAssignment), // collection
+  },
+  rules: [
+    { when: (ctx) => ctx.member.isTerminated === true, effect: "prevent" },
+    { when: (ctx) => sumHours(ctx.existingShifts) > 40, effect: "warn" },
+  ],
+});
+```
+
+**Design decisions (voted by independent reviewers):**
+- Array style rules (like decisions, not callback like model)
+- Both `prevent` (blocks action) and `warn` (logs, doesn't block)
+- Collections supported in requires (hasMany for aggregation rules)
+- `on: { model, action }` required — binds policy to specific model+action
+- Per-model files: `shiftassignment.policies.ts`
+- Generated policyIndex listing all policies per model+action
+- Auto-include policy validation in generated orchestrators (as TODO)
+
+Generates: policy validator, integration tests, policyIndex, Mermaid interaction diagram.
+
 ## Bootstrap Goal
 
 This tool will eventually describe its own models (Schema, Model, Prop, Transition, etc.) in its own schema format and generate itself.
