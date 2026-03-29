@@ -146,6 +146,12 @@ Validated on a production scheduling SaaS:
 - **Invite authorization** — `policy()`: only org admin can resend/revoke invites
 - **Invite UI visibility** — `decisions()` table: status x permissions -> button visibility
 
+## Where It Shines
+
+- **`decisions()`** for permission tables — strongest use case, direct replacement for hand-written if/else
+- **`model()`** on backend — types, transitions, validators, tests from one schema. On frontend — useful for documentation (Mermaid) and local state (Kanban, form wizards)
+- **`policy()`** for cross-model constraints — typed context, wiring, policy index. For complex computation (overlap detection, hours aggregation), use helper functions in user code
+
 ## What It Does NOT Cover
 
 - Async workflows / sagas (multi-step processes with side effects)
@@ -153,6 +159,7 @@ Validated on a production scheduling SaaS:
 - Side effects (send email, call API — belongs in orchestrators)
 - Time-based constraints (`new Date()` in guards is non-deterministic)
 - UI rendering (dopespec generates logic, not components)
+- Complex computation inside guards — extract to helper functions instead
 
 ## DDD Mapping
 

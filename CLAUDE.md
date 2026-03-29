@@ -189,6 +189,22 @@ const NoTerminatedAssignments = policy("NoTerminatedAssignments", {
 });
 ```
 
+For complex computation in guards, extract helper functions (lives in `src/`, not overwritten by codegen):
+
+```typescript
+// src/schedule-helpers.ts (user code, never overwritten)
+const shiftsOverlap = (ctx) => ctx.existingShifts.some(s =>
+  s.startTime < ctx.assignment.endTime && ctx.assignment.startTime < s.endTime
+);
+
+// schema file uses helper as guard
+rules: [
+  { when: shiftsOverlap, effect: "prevent" },
+]
+```
+
+Guard is serialized via Function.toString() — works as long as body only references `ctx`.
+
 **Design decisions (voted by independent reviewers):**
 
 - Array style rules (like decisions, not callback like model)
@@ -199,6 +215,7 @@ const NoTerminatedAssignments = policy("NoTerminatedAssignments", {
 - Generated policyIndex listing all policies per model+action
 - Auto-include policy validation in generated orchestrators (as TODO)
 - Stable violation IDs: `{policyName}:rule_{i}`
+- Single guard style only (inline `when` function) — no named checks or two-level API. For complex logic, use helper functions in user code
 
 Generates: policy validator (typed context + validate function), integration tests (one per rule), policyIndex, Mermaid interaction diagram.
 
