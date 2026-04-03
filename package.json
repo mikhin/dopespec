@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "type": "module",
-  "main": "index.js",
+  "main": "dist/schema/index.js",
   "bin": {
     "dopespec": "./bin/dopespec.mjs"
   },

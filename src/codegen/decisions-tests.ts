@@ -1,10 +1,15 @@
 import type { DecisionDef } from "../schema/decisions.js";
 
-import { capitalize, defaultValueForProp, valueToSource } from "./utils.js";
+import {
+  capitalize,
+  defaultValueForProp,
+  toKebabCase,
+  valueToSource,
+} from "./utils.js";
 
 export const generateDecisionTests = (def: DecisionDef): string => {
   const name = capitalize(def.name);
-  const lower = def.name.toLowerCase();
+  const lower = toKebabCase(def.name);
   const lines: string[] = [];
 
   lines.push(`import { describe, it, expect } from 'vitest';`);

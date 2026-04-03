@@ -1,0 +1,1 @@
+{"version":3,"file":"relations.js","sourceRoot":"","sources":["../../src/schema/relations.ts"],"names":[],"mappings":"AASA,MAAM,CAAC,MAAM,OAAO,GAAG,CAAC,MAAgB,EAA0B,EAAE,CAAC,CAAC;IACpE,IAAI,EAAE,SAAS;IACf,MAAM;CACP,CAAC,CAAC;AAEH,MAAM,CAAC,MAAM,SAAS,GAAG,CAAC,MAAgB,EAA4B,EAAE,CAAC,CAAC;IACxE,IAAI,EAAE,WAAW;IACjB,MAAM;CACP,CAAC,CAAC"}

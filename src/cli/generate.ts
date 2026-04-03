@@ -25,6 +25,7 @@ import {
   generateTypes,
   generateZod,
 } from "../codegen/index.js";
+import { toKebabCase } from "../codegen/utils.js";
 
 // --- Generator registries ---
 // "generated/" files are always overwritten; "src/" files are generate-once.
@@ -80,11 +81,11 @@ export async function main(): Promise<void> {
 
   for (const value of Object.values(mod)) {
     if (isModelDef(value)) {
-      models.push({ def: value, name: value.name.toLowerCase() });
+      models.push({ def: value, name: toKebabCase(value.name) });
     } else if (isDecisionDef(value)) {
-      decisionDefs.push({ def: value, name: value.name.toLowerCase() });
+      decisionDefs.push({ def: value, name: toKebabCase(value.name) });
     } else if (isPolicyDef(value)) {
-      policyDefs.push({ def: value, name: value.name.toLowerCase() });
+      policyDefs.push({ def: value, name: toKebabCase(value.name) });
     }
   }
 

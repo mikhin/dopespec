@@ -60,6 +60,13 @@ export const getRelations = (model: ModelDef): [string, RelationDef][] => {
 export const capitalize = (s: string): string =>
   s.charAt(0).toUpperCase() + s.slice(1);
 
+/** Converts PascalCase to kebab-case: "ContrastThresholds" → "contrast-thresholds" */
+export const toKebabCase = (name: string): string =>
+  name
+    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+    .replace(/([A-Z])([A-Z][a-z])/g, "$1-$2")
+    .toLowerCase();
+
 /**
  * Derive the id field name for a relation key. Appends Id/Ids to key as-is.
  * belongsTo "customer" → "customerId"
