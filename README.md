@@ -135,22 +135,11 @@ src/
 
 `generated/` is always overwritten. `src/` is never overwritten — your code stays safe.
 
-## Real-World Usage
-
-Validated on a production scheduling SaaS:
-
-- **Navigation permissions** — 33 lines of if/else replaced by 4-rule `decisions()` table
-- **Member edit permissions** — 139 lines of nested conditions replaced by 8-rule `decisions()` table with scope levels
-- **Invite lifecycle** — `model()` with 4 states, 6 transitions, 4 constraints, generated tests + Mermaid diagram
-- **Schedule validation** — 4 `policy()` rules: terminated employee check, overlapping shifts, weekly hours limit, daily position quota
-- **Invite authorization** — `policy()`: only org admin can resend/revoke invites
-- **Invite UI visibility** — `decisions()` table: status x permissions -> button visibility
-
 ## Where It Shines
 
 - **`decisions()`** for permission tables — strongest use case, direct replacement for hand-written if/else
-- **`model()`** on backend — types, transitions, validators, tests from one schema. On frontend — useful for documentation (Mermaid) and local state (Kanban, form wizards)
-- **`policy()`** for cross-model constraints — typed context, wiring, policy index. For complex computation (overlap detection, hours aggregation), use helper functions in user code
+- **`model()`** on backend — types, transitions, validators, tests from one schema. On frontend — useful for documentation and local state
+- **`policy()`** for cross-model constraints — typed context, wiring, policy index. For complex computation use helper functions in user code
 
 ## What It Does NOT Cover
 
