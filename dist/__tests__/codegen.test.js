@@ -554,7 +554,7 @@ describe("generateDecisionTests", () => {
         const output = generateDecisionTests(CreditTier);
         expect(output).toContain("import { describe, it, expect } from 'vitest'");
         expect(output).toContain("import { evaluateCreditTier }");
-        expect(output).toContain("from './credittier.evaluate.js'");
+        expect(output).toContain("from './credit-tier.evaluate.js'");
         expect(output).toContain("describe('CreditTier'");
         expect(output).toContain("when extraItemId");
         expect(output).toContain("then credits");

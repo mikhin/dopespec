@@ -1,3 +1,3 @@
 graph LR
-NoSuspendedCustomerOrders -->|prevent/warn| Order.addItem
-Customer -->|belongsTo| Order
+  NoSuspendedCustomerOrders -->|prevent/warn| Order.addItem
+  Customer -->|belongsTo| Order

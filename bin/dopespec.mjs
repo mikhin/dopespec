@@ -8,7 +8,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const cli = join(__dirname, "..", "src", "cli", "generate.ts");
+const cli = join(__dirname, "..", "dist", "cli", "generate.js");
 
 try {
   execFileSync(

@@ -41,8 +41,8 @@ const models = [
 ];
 
 const decisionDefs = [
-  { def: CreditTier as DecisionDef, name: "credittier" },
-  { def: PetAdoptionFee as DecisionDef, name: "petadoptionfee" },
+  { def: CreditTier as DecisionDef, name: "credit-tier" },
+  { def: PetAdoptionFee as DecisionDef, name: "pet-adoption-fee" },
 ];
 
 // Model generators that go into generated/ (always overwritten)

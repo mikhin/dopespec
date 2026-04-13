@@ -1,5 +1,5 @@
 export type CustomerUpdateEmailCommand = {
-  type: "CustomerUpdateEmail";
+  type: 'CustomerUpdateEmail';
   payload: { email: string };
 };
 

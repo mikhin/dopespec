@@ -1,13 +1,22 @@
 {
   "name": "dopespec",
-  "version": "1.0.0",
-  "description": "",
+  "version": "0.0.1",
+  "description": "Schema-first domain modeling. Describe your business logic in TypeScript, generate types, state machines, validators, tests, Zod schemas, and Mermaid diagrams.",
   "type": "module",
   "main": "dist/schema/index.js",
+  "exports": {
+    ".": "./dist/schema/index.js"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "README.md"
+  ],
   "bin": {
     "dopespec": "./bin/dopespec.mjs"
   },
   "scripts": {
+    "build": "tsc",
     "generate": "tsx src/cli/generate.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
@@ -16,8 +25,16 @@
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "domain-modeling",
+    "codegen",
+    "typescript",
+    "ddd",
+    "state-machine",
+    "decision-table",
+    "schema"
+  ],
+  "author": "Yuri Mikhin",
   "license": "ISC",
   "packageManager": "pnpm@10.30.3",
   "dependencies": {

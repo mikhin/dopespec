@@ -1,26 +1,26 @@
-import type { PetProps } from "./pet.types.js";
+import type { PetProps } from './pet.types.js';
 
 export type PetReleaseEvent = {
-  type: "PetRelease";
+  type: 'PetRelease';
   payload: PetProps;
-  from: "reserved";
-  to: "available";
+  from: 'reserved';
+  to: 'available';
   timestamp: Date;
 };
 
 export type PetReserveEvent = {
-  type: "PetReserve";
+  type: 'PetReserve';
   payload: PetProps;
-  from: "available";
-  to: "reserved";
+  from: 'available';
+  to: 'reserved';
   timestamp: Date;
 };
 
 export type PetSellEvent = {
-  type: "PetSell";
+  type: 'PetSell';
   payload: PetProps;
-  from: "reserved";
-  to: "sold";
+  from: 'reserved';
+  to: 'sold';
   timestamp: Date;
 };
 
