@@ -1,4 +1,4 @@
-import { capitalize, getTransitions } from "./utils.js";
+import { capitalize, getTransitions, toKebabCase } from "./utils.js";
 /**
  * Generate domain event types from a model's transitions.
  * Generated code references ${Model}Props — expects types from ./${modelName}.types
@@ -9,7 +9,7 @@ export const generateEvents = (model) => {
     if (transitions.length === 0)
         return "";
     const typeName = capitalize(model.name);
-    const modelName = model.name.toLowerCase();
+    const modelName = toKebabCase(model.name);
     const propsType = `${typeName}Props`;
     const lines = [];
     const eventTypeNames = [];

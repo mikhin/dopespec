@@ -1,6 +1,6 @@
 import type { ModelDef } from "../schema/model.js";
 
-import { capitalize, fieldsToTSType, getActions } from "./utils.js";
+import { capitalize, fieldsToTSType, getActions, toKebabCase } from "./utils.js";
 
 /**
  * Generate service orchestrator skeletons from a model's actions.
@@ -15,7 +15,7 @@ export const generateOrchestrators = (
   if (actions.length === 0) return "";
 
   const typeName = capitalize(model.name);
-  const modelName = model.name.toLowerCase();
+  const modelName = toKebabCase(model.name);
   const propsType = `${typeName}Props`;
   const lines: string[] = [];
 

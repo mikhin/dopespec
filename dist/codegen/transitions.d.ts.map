@@ -1,1 +1,1 @@
-{"version":3,"file":"transitions.d.ts","sourceRoot":"","sources":["../../src/codegen/transitions.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,QAAQ,EAAE,MAAM,oBAAoB,CAAC;AAUnD,0EAA0E;AAC1E,eAAO,MAAM,mBAAmB,GAAI,OAAO,QAAQ,KAAG,MAiDrD,CAAC"}
+{"version":3,"file":"transitions.d.ts","sourceRoot":"","sources":["../../src/codegen/transitions.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,QAAQ,EAAE,MAAM,oBAAoB,CAAC;AAWnD,0EAA0E;AAC1E,eAAO,MAAM,mBAAmB,GAAI,OAAO,QAAQ,KAAG,MAiDrD,CAAC"}

@@ -1,6 +1,6 @@
 {
   "name": "dopespec",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Schema-first domain modeling. Describe your business logic in TypeScript, generate types, state machines, validators, tests, Zod schemas, and Mermaid diagrams.",
   "type": "module",
   "main": "dist/schema/index.js",

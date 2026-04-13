@@ -9,6 +9,7 @@ import {
   guardToSource,
   relationIdField,
   resolvePolicyGuardBody,
+  toKebabCase,
 } from "./utils.js";
 
 /**
@@ -23,7 +24,7 @@ export const generatePolicyTests = (
   if (policies.length === 0) return "";
 
   const lines: string[] = [];
-  const targetKey = targetModelName.toLowerCase();
+  const targetKey = toKebabCase(targetModelName);
 
   emitTestImports(lines, targetKey, policies);
 

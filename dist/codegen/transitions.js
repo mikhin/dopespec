@@ -1,11 +1,11 @@
-import { capitalize, getLifecycleProp, getTransitions, guardToSource, resolveGuardBody, } from "./utils.js";
+import { capitalize, getLifecycleProp, getTransitions, guardToSource, resolveGuardBody, toKebabCase, } from "./utils.js";
 /** Generate transition functions with runtime state checks and guards. */
 export const generateTransitions = (model) => {
     const transitions = getTransitions(model);
     if (transitions.length === 0)
         return "";
     const typeName = capitalize(model.name);
-    const modelName = model.name.toLowerCase();
+    const modelName = toKebabCase(model.name);
     const propsType = `${typeName}Props`;
     const lines = [];
     // Convention: generated transition module imports types from ./${modelName}.types

@@ -1,4 +1,4 @@
-import { capitalize, fieldsToTSType, getActions } from "./utils.js";
+import { capitalize, fieldsToTSType, getActions, toKebabCase } from "./utils.js";
 /**
  * Generate service orchestrator skeletons from a model's actions.
  * @param policyActions — optional map of action → policy names for TODO comments
@@ -8,7 +8,7 @@ export const generateOrchestrators = (model, policyActions) => {
     if (actions.length === 0)
         return "";
     const typeName = capitalize(model.name);
-    const modelName = model.name.toLowerCase();
+    const modelName = toKebabCase(model.name);
     const propsType = `${typeName}Props`;
     const lines = [];
     // User code in src/ imports types from ../generated/

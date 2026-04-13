@@ -5,6 +5,7 @@ import {
   getConstraints,
   guardToSource,
   resolveGuardBody,
+  toKebabCase,
 } from "./utils.js";
 
 /** Generate invariant validation functions from a model's constraints. */
@@ -14,7 +15,7 @@ export const generateInvariants = (model: ModelDef): string => {
   if (constraints.length === 0) return "";
 
   const typeName = capitalize(model.name);
-  const modelName = model.name.toLowerCase();
+  const modelName = toKebabCase(model.name);
   const propsType = `${typeName}Props`;
   const lines: string[] = [];
   const constraintNames: string[] = [];

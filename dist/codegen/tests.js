@@ -1,5 +1,5 @@
 import { isOptional } from "../schema/props.js";
-import { capitalize, defaultValueForProp, getLifecycleProp, getRelations, getTransitions, relationIdField, valueToSource, } from "./utils.js";
+import { capitalize, defaultValueForProp, getLifecycleProp, getRelations, getTransitions, relationIdField, toKebabCase, valueToSource, } from "./utils.js";
 /**
  * Build a complete ctx object literal by merging prop defaults, relation
  * defaults, and scenario-given values at codegen time. This avoids duplicate
@@ -71,7 +71,7 @@ export const generateTests = (model) => {
     if (transitions.length === 0)
         return "";
     const typeName = capitalize(model.name);
-    const modelName = model.name.toLowerCase();
+    const modelName = toKebabCase(model.name);
     const propsType = `${typeName}Props`;
     const lifecycleKey = getLifecycleProp(model)?.key;
     // Collect prop entries for building complete ctx objects

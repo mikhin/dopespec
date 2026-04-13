@@ -1,7 +1,7 @@
 import type { ModelDef } from "../schema/model.js";
 import type { PolicyDef } from "../schema/policy.js";
 
-import { capitalize, guardToSource, resolvePolicyGuardBody } from "./utils.js";
+import { capitalize, guardToSource, resolvePolicyGuardBody, toKebabCase } from "./utils.js";
 
 /**
  * Generate policy validator functions for all policies targeting a single model.
@@ -32,13 +32,13 @@ function emitImports(lines: string[], policies: PolicyDef[]): void {
   for (const policy of policies) {
     const onModelName = policy.on.model.name;
 
-    imports.set(onModelName.toLowerCase(), `${capitalize(onModelName)}Props`);
+    imports.set(toKebabCase(onModelName), `${capitalize(onModelName)}Props`);
 
     for (const rel of Object.values(policy.requires)) {
       const reqModelName = rel.target.name;
 
       imports.set(
-        reqModelName.toLowerCase(),
+        toKebabCase(reqModelName),
         `${capitalize(reqModelName)}Props`,
       );
     }

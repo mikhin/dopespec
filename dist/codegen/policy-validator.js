@@ -1,4 +1,4 @@
-import { capitalize, guardToSource, resolvePolicyGuardBody } from "./utils.js";
+import { capitalize, guardToSource, resolvePolicyGuardBody, toKebabCase } from "./utils.js";
 /**
  * Generate policy validator functions for all policies targeting a single model.
  * Output: generated/${targetModel}.policies.ts
@@ -19,10 +19,10 @@ function emitImports(lines, policies) {
     const imports = new Map();
     for (const policy of policies) {
         const onModelName = policy.on.model.name;
-        imports.set(onModelName.toLowerCase(), `${capitalize(onModelName)}Props`);
+        imports.set(toKebabCase(onModelName), `${capitalize(onModelName)}Props`);
         for (const rel of Object.values(policy.requires)) {
             const reqModelName = rel.target.name;
-            imports.set(reqModelName.toLowerCase(), `${capitalize(reqModelName)}Props`);
+            imports.set(toKebabCase(reqModelName), `${capitalize(reqModelName)}Props`);
         }
     }
     for (const [modelKey, propsType] of [...imports].sort(([a], [b]) => a.localeCompare(b))) {

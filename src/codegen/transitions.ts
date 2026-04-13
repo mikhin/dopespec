@@ -6,6 +6,7 @@ import {
   getTransitions,
   guardToSource,
   resolveGuardBody,
+  toKebabCase,
 } from "./utils.js";
 
 /** Generate transition functions with runtime state checks and guards. */
@@ -15,7 +16,7 @@ export const generateTransitions = (model: ModelDef): string => {
   if (transitions.length === 0) return "";
 
   const typeName = capitalize(model.name);
-  const modelName = model.name.toLowerCase();
+  const modelName = toKebabCase(model.name);
   const propsType = `${typeName}Props`;
   const lines: string[] = [];
 

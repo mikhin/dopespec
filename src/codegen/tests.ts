@@ -10,6 +10,7 @@ import {
   getRelations,
   getTransitions,
   relationIdField,
+  toKebabCase,
   valueToSource,
 } from "./utils.js";
 
@@ -127,7 +128,7 @@ export const generateTests = (model: ModelDef): string => {
   if (transitions.length === 0) return "";
 
   const typeName = capitalize(model.name);
-  const modelName = model.name.toLowerCase();
+  const modelName = toKebabCase(model.name);
   const propsType = `${typeName}Props`;
   const lifecycleKey = getLifecycleProp(model)?.key;
 

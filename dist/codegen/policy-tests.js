@@ -1,4 +1,4 @@
-import { buildModelDefaults, capitalize, defaultValueForProp, guardToSource, relationIdField, resolvePolicyGuardBody, } from "./utils.js";
+import { buildModelDefaults, capitalize, defaultValueForProp, guardToSource, relationIdField, resolvePolicyGuardBody, toKebabCase, } from "./utils.js";
 /**
  * Generate integration tests for all policies targeting a single model.
  * Output: generated/${targetModel}.policy.test.ts
@@ -7,7 +7,7 @@ export const generatePolicyTests = (targetModelName, policies, modelLookup) => {
     if (policies.length === 0)
         return "";
     const lines = [];
-    const targetKey = targetModelName.toLowerCase();
+    const targetKey = toKebabCase(targetModelName);
     emitTestImports(lines, targetKey, policies);
     for (const policy of policies) {
         emitPolicyTestBlock(lines, policy, modelLookup);
