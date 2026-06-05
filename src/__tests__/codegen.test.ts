@@ -44,7 +44,9 @@ import {
 import { action } from "../schema/actions.js";
 import { decisions } from "../schema/decisions.js";
 import { model } from "../schema/model.js";
+import { policy } from "../schema/policy.js";
 import { boolean, number, oneOf, optional, string } from "../schema/props.js";
+import { belongsTo } from "../schema/relations.js";
 
 // Minimal model with no optional fields
 const Minimal = model("Minimal", {});
@@ -981,6 +983,72 @@ describe("generatePolicyTests", () => {
 
   it("returns empty string for empty policies", () => {
     expect(generatePolicyTests("order", [], policyModelLookup)).toBe("");
+  });
+});
+
+// Regression: a guard combining an enum check with a numeric threshold must
+// produce a *firing* fixture. Previously the generator filled required-model
+// props with type defaults (taskCount → 0), so `taskCount >= 8` never fired and
+// the generated "prevent" test failed.
+const LimitBoard = model("LimitBoard", {
+  props: {
+    paymentStatus: oneOf(["UNPAID", "PAID"]),
+    taskCount: number(),
+  },
+});
+
+const LimitTask = model("LimitTask", {
+  actions: { create: action() },
+  props: { title: string() },
+});
+
+const thresholdLookup = new Map<string, ModelDef>([
+  ["LimitBoard", LimitBoard as ModelDef],
+  ["LimitTask", LimitTask as ModelDef],
+]);
+
+describe("generatePolicyTests — derived fixtures", () => {
+  it("satisfies a numeric-threshold guard with a probed value", () => {
+    const FreeTierLimit = policy("FreeTierLimit", {
+      on: { action: "create", model: LimitTask },
+      requires: { board: belongsTo(LimitBoard) },
+      rules: [
+        {
+          effect: "prevent",
+          when: (ctx) =>
+            ctx.board.paymentStatus === "UNPAID" && ctx.board.taskCount >= 8,
+        },
+      ],
+    }) as PolicyDef;
+
+    const output = generatePolicyTests(
+      "limit-task",
+      [FreeTierLimit],
+      thresholdLookup,
+    );
+
+    // A real test (not it.todo) that pins both conjuncts of the guard.
+    expect(output).toContain("it('FreeTierLimit:rule_0");
+    expect(output).not.toContain("it.todo");
+    expect(output).toContain("paymentStatus: 'UNPAID'");
+    expect(output).toContain("taskCount: 8");
+    expect(output).toContain("expect(result.valid).toBe(false)");
+  });
+
+  it("emits it.todo when no fixture can satisfy the guard", () => {
+    const Unsatisfiable = policy("Unsatisfiable", {
+      on: { action: "create", model: LimitTask },
+      requires: { board: belongsTo(LimitBoard) },
+      rules: [{ effect: "prevent", when: (ctx) => ctx.board.taskCount > 1e9 }],
+    }) as PolicyDef;
+
+    const output = generatePolicyTests(
+      "limit-task",
+      [Unsatisfiable],
+      thresholdLookup,
+    );
+
+    expect(output).toContain("it.todo('Unsatisfiable:rule_0");
   });
 });
 
