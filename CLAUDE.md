@@ -193,14 +193,15 @@ For complex computation in guards, extract helper functions (lives in `src/`, no
 
 ```typescript
 // src/schedule-helpers.ts (user code, never overwritten)
-const shiftsOverlap = (ctx) => ctx.existingShifts.some(s =>
-  s.startTime < ctx.assignment.endTime && ctx.assignment.startTime < s.endTime
-);
+const shiftsOverlap = (ctx) =>
+  ctx.existingShifts.some(
+    (s) =>
+      s.startTime < ctx.assignment.endTime &&
+      ctx.assignment.startTime < s.endTime,
+  );
 
 // schema file uses helper as guard
-rules: [
-  { when: shiftsOverlap, effect: "prevent" },
-]
+rules: [{ when: shiftsOverlap, effect: "prevent" }];
 ```
 
 Guard is serialized via Function.toString() — works as long as body only references `ctx`.

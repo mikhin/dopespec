@@ -1,7 +1,12 @@
 import type { ModelDef } from "../schema/model.js";
 import type { PolicyDef } from "../schema/policy.js";
 
-import { capitalize, guardToSource, resolvePolicyGuardBody, toKebabCase } from "./utils.js";
+import {
+  capitalize,
+  guardToSource,
+  resolvePolicyGuardBody,
+  toKebabCase,
+} from "./utils.js";
 
 /**
  * Generate policy validator functions for all policies targeting a single model.
