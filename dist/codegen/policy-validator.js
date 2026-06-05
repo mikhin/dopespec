@@ -1,4 +1,4 @@
-import { capitalize, guardToSource, resolvePolicyGuardBody, toKebabCase } from "./utils.js";
+import { capitalize, guardToSource, resolvePolicyGuardBody, toKebabCase, } from "./utils.js";
 /**
  * Generate policy validator functions for all policies targeting a single model.
  * Output: generated/${targetModel}.policies.ts

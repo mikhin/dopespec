@@ -1,6 +1,11 @@
 import type { ModelDef } from "../schema/model.js";
 
-import { capitalize, fieldsToTSType, getActions, toKebabCase } from "./utils.js";
+import {
+  capitalize,
+  fieldsToTSType,
+  getActions,
+  toKebabCase,
+} from "./utils.js";
 
 /**
  * Generate service orchestrator skeletons from a model's actions.
