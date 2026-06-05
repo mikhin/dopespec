@@ -75,19 +75,15 @@ function buildSlots(rawBody, ctxModels) {
     }
     return slots;
 }
-/** Candidate values to probe for a prop, default value first. */
+/** Candidate values to probe for a prop — always non-empty and default-first. */
 function candidatesForProp(prop, defaultValue, numberLiterals, stringLiterals) {
-    if (prop.kind === "lifecycle" || prop.kind === "oneOf") {
-        return prop.values;
-    }
-    if (prop.kind === "boolean")
-        return [false, true];
-    if (prop.kind === "number")
-        return dedupe([0, ...numberLiterals]);
-    if (prop.kind === "string")
-        return dedupe(["", ...stringLiterals]);
-    // date and any future kind: not probed, pinned to its default.
-    return [defaultValue];
+    // Prepend the default so the list is never empty — an enum can be declared
+    // with an empty values tuple, and an empty candidate list would zero out the
+    // whole search space — and so the all-defaults context is probed first.
+    return dedupe([
+        defaultValue,
+        ...seedCandidates(prop, numberLiterals, stringLiterals),
+    ]);
 }
 function collectAssignment(ctxModels, slots, indices) {
     const assignment = {};
@@ -163,13 +159,18 @@ function emitRuleTest(lines, index, rule, policy, validateFn, requiresModels, mo
     const escapedBody = guardBody.replace(/'/g, "\\'");
     const onModel = modelLookup.get(policy.on.model.name);
     const onKey = policy.on.model.name.toLowerCase();
-    const assignment = findSatisfyingAssignment(rule, rawBody, onKey, onModel, policy, requiresModels);
-    // No fixture can make this guard fire (e.g. a guard over a hasMany length, or
-    // an opaque comparison) — emit a todo rather than a guaranteed-red test.
-    if (!assignment) {
-        lines.push(`  it.todo('${ruleId}: ${escapedBody} → ${rule.effect} (no auto-derivable fixture)');`);
+    const search = findSatisfyingAssignment(rule, rawBody, onKey, onModel, policy, requiresModels);
+    // No firing fixture — emit a todo rather than a guaranteed-red test, and say
+    // why: genuinely unsatisfiable (e.g. a hasMany-length guard) vs. a search
+    // space larger than the cap (which may yet be satisfiable).
+    if (search.kind !== "found") {
+        const reason = search.kind === "capped"
+            ? `search space ${String(search.total)} exceeds cap of ${String(MAX_COMBINATIONS)}`
+            : "no fixture satisfies the guard";
+        lines.push(`  it.todo('${ruleId}: ${escapedBody} → ${rule.effect} (${reason})');`);
         return;
     }
+    const assignment = search.assignment;
     lines.push(`  it('${ruleId}: ${escapedBody} → ${rule.effect}', () => {`);
     lines.push(`    const ctx = {`);
     lines.push(`      ${onKey}: ${emitModelLiteral(onModel, assignment[onKey] ?? {})},`);
@@ -206,13 +207,17 @@ function emitTestImports(lines, targetKey, policies) {
     lines.push(`import type { ${contextImports} } from './${targetKey}.policies.js';`);
     lines.push("");
 }
-/** Numeric literals in a guard body, each paired with value+1 (covers `>` vs `>=`). */
+/**
+ * Numeric literals in a guard body (incl. decimals and scientific notation),
+ * each seeded with value-1 and value+1 so the search straddles a threshold
+ * regardless of the operator (`>`/`>=`/`<`/`<=`).
+ */
 function extractNumberLiterals(body) {
     const out = [];
-    for (const match of body.matchAll(/-?\b\d+(?:\.\d+)?\b/g)) {
+    for (const match of body.matchAll(/-?\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b/g)) {
         const n = Number(match[0]);
         if (!Number.isNaN(n))
-            out.push(n, n + 1);
+            out.push(n - 1, n, n + 1);
     }
     return dedupe(out);
 }
@@ -246,19 +251,21 @@ function findSatisfyingAssignment(rule, rawBody, onKey, onModel, policy, require
     const ctxModels = ctxModelsFor(onKey, onModel, policy, requiresModels);
     const slots = buildSlots(rawBody, ctxModels);
     const total = slots.reduce((n, slot) => n * slot.candidates.length, 1);
+    // Distinct from "exhausted": the space may hold a satisfying assignment we
+    // chose not to enumerate, so the caller words its it.todo differently.
     if (total > MAX_COMBINATIONS)
-        return null;
+        return { kind: "capped", total };
     const indices = new Array(slots.length).fill(0);
     for (let iter = 0; iter < total; iter++) {
         if (guardFires(rule, buildProbeCtx(ctxModels, slots, indices))) {
-            return collectAssignment(ctxModels, slots, indices);
+            return { assignment: collectAssignment(ctxModels, slots, indices), kind: "found" };
         }
         // Odometer: increment the last slot fastest so the target model (first
         // slots) stays at defaults until the requires are exhausted.
         if (!advance(indices, slots))
             break;
     }
-    return null;
+    return { kind: "exhausted" };
 }
 function guardFires(rule, ctx) {
     try {
@@ -285,5 +292,19 @@ function resolveRequiresModels(policy, modelLookup) {
             result[key] = model;
     }
     return result;
+}
+/** Extra probe values per prop kind (the default is prepended separately). */
+function seedCandidates(prop, numberLiterals, stringLiterals) {
+    if (prop.kind === "lifecycle" || prop.kind === "oneOf") {
+        return prop.values;
+    }
+    if (prop.kind === "boolean")
+        return [true, false];
+    if (prop.kind === "number")
+        return numberLiterals;
+    if (prop.kind === "string")
+        return stringLiterals;
+    // date and any future kind: not probed beyond the default.
+    return [];
 }
 //# sourceMappingURL=policy-tests.js.map
