@@ -46,7 +46,7 @@ import { decisions } from "../schema/decisions.js";
 import { model } from "../schema/model.js";
 import { policy } from "../schema/policy.js";
 import { boolean, number, oneOf, optional, string } from "../schema/props.js";
-import { belongsTo } from "../schema/relations.js";
+import { belongsTo, hasMany } from "../schema/relations.js";
 
 // Minimal model with no optional fields
 const Minimal = model("Minimal", {});
@@ -1035,20 +1035,54 @@ describe("generatePolicyTests — derived fixtures", () => {
     expect(output).toContain("expect(result.valid).toBe(false)");
   });
 
-  it("emits it.todo when no fixture can satisfy the guard", () => {
-    const Unsatisfiable = policy("Unsatisfiable", {
+  it("emits it.todo for a guard the search cannot satisfy", () => {
+    // hasMany requireds are probed with a single default element, so a
+    // length-based guard above 1 is genuinely non-derivable here.
+    const CollectionLength = policy("CollectionLength", {
       on: { action: "create", model: LimitTask },
-      requires: { board: belongsTo(LimitBoard) },
-      rules: [{ effect: "prevent", when: (ctx) => ctx.board.taskCount > 1e9 }],
+      requires: { boards: hasMany(LimitBoard) },
+      rules: [{ effect: "prevent", when: (ctx) => ctx.boards.length > 1 }],
     }) as PolicyDef;
 
     const output = generatePolicyTests(
       "limit-task",
-      [Unsatisfiable],
+      [CollectionLength],
       thresholdLookup,
     );
 
-    expect(output).toContain("it.todo('Unsatisfiable:rule_0");
+    expect(output).toContain("it.todo('CollectionLength:rule_0");
+    expect(output).toContain("no fixture satisfies the guard");
+  });
+
+  it("does not let an empty-enum prop zero out the search", () => {
+    const EmptyEnumBoard = model("EmptyEnumBoard", {
+      props: {
+        paymentStatus: oneOf(["UNPAID", "PAID"]),
+        tag: oneOf([] as const),
+      },
+    });
+
+    const EmptyEnumGuard = policy("EmptyEnumGuard", {
+      on: { action: "create", model: LimitTask },
+      requires: { board: belongsTo(EmptyEnumBoard) },
+      rules: [
+        { effect: "prevent", when: (ctx) => ctx.board.paymentStatus === "UNPAID" },
+      ],
+    }) as PolicyDef;
+
+    const output = generatePolicyTests(
+      "limit-task",
+      [EmptyEnumGuard],
+      new Map<string, ModelDef>([
+        ["EmptyEnumBoard", EmptyEnumBoard as ModelDef],
+        ["LimitTask", LimitTask as ModelDef],
+      ]),
+    );
+
+    // The empty `tag` enum must not collapse the search space to zero.
+    expect(output).toContain("it('EmptyEnumGuard:rule_0");
+    expect(output).not.toContain("it.todo");
+    expect(output).toContain("paymentStatus: 'UNPAID'");
   });
 });
 

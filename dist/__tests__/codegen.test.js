@@ -12,7 +12,7 @@ import { decisions } from "../schema/decisions.js";
 import { model } from "../schema/model.js";
 import { policy } from "../schema/policy.js";
 import { boolean, number, oneOf, optional, string } from "../schema/props.js";
-import { belongsTo } from "../schema/relations.js";
+import { belongsTo, hasMany } from "../schema/relations.js";
 // Minimal model with no optional fields
 const Minimal = model("Minimal", {});
 // Model with actions but no fields metadata
@@ -717,14 +717,40 @@ describe("generatePolicyTests — derived fixtures", () => {
         expect(output).toContain("taskCount: 8");
         expect(output).toContain("expect(result.valid).toBe(false)");
     });
-    it("emits it.todo when no fixture can satisfy the guard", () => {
-        const Unsatisfiable = policy("Unsatisfiable", {
+    it("emits it.todo for a guard the search cannot satisfy", () => {
+        // hasMany requireds are probed with a single default element, so a
+        // length-based guard above 1 is genuinely non-derivable here.
+        const CollectionLength = policy("CollectionLength", {
             on: { action: "create", model: LimitTask },
-            requires: { board: belongsTo(LimitBoard) },
-            rules: [{ effect: "prevent", when: (ctx) => ctx.board.taskCount > 1e9 }],
+            requires: { boards: hasMany(LimitBoard) },
+            rules: [{ effect: "prevent", when: (ctx) => ctx.boards.length > 1 }],
         });
-        const output = generatePolicyTests("limit-task", [Unsatisfiable], thresholdLookup);
-        expect(output).toContain("it.todo('Unsatisfiable:rule_0");
+        const output = generatePolicyTests("limit-task", [CollectionLength], thresholdLookup);
+        expect(output).toContain("it.todo('CollectionLength:rule_0");
+        expect(output).toContain("no fixture satisfies the guard");
+    });
+    it("does not let an empty-enum prop zero out the search", () => {
+        const EmptyEnumBoard = model("EmptyEnumBoard", {
+            props: {
+                paymentStatus: oneOf(["UNPAID", "PAID"]),
+                tag: oneOf([]),
+            },
+        });
+        const EmptyEnumGuard = policy("EmptyEnumGuard", {
+            on: { action: "create", model: LimitTask },
+            requires: { board: belongsTo(EmptyEnumBoard) },
+            rules: [
+                { effect: "prevent", when: (ctx) => ctx.board.paymentStatus === "UNPAID" },
+            ],
+        });
+        const output = generatePolicyTests("limit-task", [EmptyEnumGuard], new Map([
+            ["EmptyEnumBoard", EmptyEnumBoard],
+            ["LimitTask", LimitTask],
+        ]));
+        // The empty `tag` enum must not collapse the search space to zero.
+        expect(output).toContain("it('EmptyEnumGuard:rule_0");
+        expect(output).not.toContain("it.todo");
+        expect(output).toContain("paymentStatus: 'UNPAID'");
     });
 });
 describe("generatePolicyMermaid", () => {
