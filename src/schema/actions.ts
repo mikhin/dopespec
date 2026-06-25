@@ -2,6 +2,7 @@ import type {
   BooleanProp,
   DateProp,
   NumberProp,
+  OneOfProp,
   PropDef,
   StringProp,
 } from "./props.js";
@@ -28,14 +29,24 @@ type FieldsOf<P> = { [K in keyof P]: PropDefFor<P[K]> };
 /**
  * Maps a TypeScript type to the corresponding PropDef variant.
  * Used by FieldsOf to enforce compile-time validation between Payload and fields.
+ *
+ * A *literal* string union (e.g. `'left' | 'right'`) accepts a matching
+ * `oneOf([...])` as well as `string()`. `oneOf` is preferred because the union
+ * then survives into the generated command types instead of widening to `string`;
+ * `string()` stays valid for backwards compatibility. The wide `string` type only
+ * accepts `string()`. The `[T]` tuple wrappers stop the conditional from
+ * distributing over the union, so a single `OneOfProp<readonly ('left'|'right')[]>`
+ * is produced rather than one per member.
  */
-type PropDefFor<T> = T extends string
-  ? StringProp
-  : T extends number
+type PropDefFor<T> = [T] extends [string]
+  ? [string] extends [T]
+    ? StringProp
+    : OneOfProp<readonly T[]> | StringProp
+  : [T] extends [number]
     ? NumberProp
-    : T extends boolean
+    : [T] extends [boolean]
       ? BooleanProp
-      : T extends Date
+      : [T] extends [Date]
         ? DateProp
         : PropDef;
 

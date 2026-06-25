@@ -37,6 +37,8 @@ Prop types: `string()`, `number()`, `boolean()`, `date()`, `oneOf([...])`, `arra
 
 Relations: `belongsTo(M)` / `hasMany(M)` generate normalized id refs (`xId` / `xIds`); `embeds(M)` nests the child's props inline as an array (`key: ChildProps[]`) for denormalized aggregates / tree structures.
 
+Action payloads: a literal string-union field accepts a matching `oneOf([...])` so the union survives into the generated command type instead of widening to `string` — `action<{ direction: "left" | "right" }>({ direction: oneOf(["left", "right"]) })` generates `payload: { direction: 'left' | 'right' }`. `string()` stays valid for such fields too.
+
 ### `decisions()` — pure decision table
 
 ```typescript
