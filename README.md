@@ -1,5 +1,8 @@
 # dopespec
 
+[![CI](https://github.com/mikhin/dopespec/actions/workflows/ci.yml/badge.svg)](https://github.com/mikhin/dopespec/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/dopespec)](https://www.npmjs.com/package/dopespec)
+
 Schema-first domain modeling. Describe your business logic in TypeScript, generate everything else.
 
 One schema file produces: types, state machines, validators, tests, Zod schemas, Mermaid diagrams.
@@ -124,7 +127,7 @@ generated/
   order.events.ts         domain event types
   order.commands.ts       command types
   order.invariants.ts     constraint validators
-  order.tests.ts          unit tests (BDD)
+  order.test.ts           unit tests (BDD)
   order.zod.ts            Zod validation schema
   order.mermaid.md        state diagram
 
@@ -184,7 +187,7 @@ it('given {"total":100}, when pay, then status = paid', () => {
 ## Roadmap
 
 - [ ] Array prop type (`dates: arrayOf(date())`) — needed for real-world models like excluded dates, tag lists
-- [ ] npm publish
+- [x] npm publish
 - [ ] Self-hosting (dopespec describes its own types in its own schema)
 - [ ] ESLint plugin (static analysis: unreachable states, dead actions, missing scenarios)
 - [ ] Non-tech participation (diagrams + markdown tables readable by PM/designers)
