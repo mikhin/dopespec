@@ -65,6 +65,14 @@ const formatUnionValues = (values) => values.map((v) => `'${v}'`).join(" | ");
 /** Map a PropDef kind to its TypeScript type string. */
 export const propKindToTS = (prop) => {
     switch (prop.kind) {
+        case "array": {
+            const inner = prop.values;
+            const innerTs = propKindToTS(inner);
+            // Parenthesize union inners so `('a' | 'b')[]` parses correctly.
+            return inner.kind === "lifecycle" || inner.kind === "oneOf"
+                ? `(${innerTs})[]`
+                : `${innerTs}[]`;
+        }
         case "boolean":
             return "boolean";
         case "date":
@@ -88,6 +96,8 @@ const formatZodEnum = (values) => {
 /** Map a PropDef kind to its Zod validator string. */
 export const propKindToZod = (prop) => {
     switch (prop.kind) {
+        case "array":
+            return `z.array(${propKindToZod(prop.values)})`;
         case "boolean":
             return "z.boolean()";
         case "date":
@@ -241,6 +251,8 @@ export const valueToSource = (value) => {
 /** Return a sensible default value (as source code) for a PropDef kind. */
 export const defaultValueForProp = (prop) => {
     switch (prop.kind) {
+        case "array":
+            return "[]";
         case "boolean":
             return "false";
         case "date":
@@ -280,6 +292,9 @@ export const buildModelDefaults = (model) => {
         return defaults;
     for (const [key, prop] of Object.entries(model.props)) {
         switch (prop.kind) {
+            case "array":
+                defaults[key] = [];
+                break;
             case "boolean":
                 defaults[key] = false;
                 break;

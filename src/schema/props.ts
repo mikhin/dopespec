@@ -1,3 +1,6 @@
+/** Array prop — a list of a scalar inner prop (e.g. arrayOf(date()) → Date[]). */
+export type ArrayProp<P extends PropDef = PropDef> = PropDef<"array", P>;
+
 export type BooleanProp = PropDef<"boolean", null>;
 
 export type DateProp = PropDef<"date", null>;
@@ -20,7 +23,9 @@ export type InferPropType<P> = P extends StringProp
           ? T[number]
           : P extends LifecycleProp<infer T>
             ? T[number]
-            : never;
+            : P extends ArrayProp<infer Inner>
+              ? InferPropType<Inner>[]
+              : never;
 /**
  * Lifecycle prop — defines the state machine states for a model.
  * Only lifecycle() values are valid in from().to() transitions.
@@ -39,6 +44,7 @@ export type PropDef<K extends PropKind = PropKind, V = unknown> = {
 };
 
 export type PropKind =
+  | "array"
   | "boolean"
   | "date"
   | "lifecycle"
@@ -78,6 +84,17 @@ export const string = (): StringProp => ({ kind: "string", values: null });
 export const number = (): NumberProp => ({ kind: "number", values: null });
 export const boolean = (): BooleanProp => ({ kind: "boolean", values: null });
 export const date = (): DateProp => ({ kind: "date", values: null });
+
+/** A list of a scalar prop: arrayOf(string()) → string[], arrayOf(date()) → Date[]. */
+export const arrayOf = <P extends PropDef>(
+  inner: P & (P extends LifecycleProp<readonly string[]> ? never : P),
+): ArrayProp<P> => {
+  if (inner.kind === "lifecycle") {
+    throw new Error("arrayOf() cannot wrap a lifecycle prop");
+  }
+
+  return { kind: "array", values: inner };
+};
 
 export type OptionalPropDef<P extends PropDef = PropDef> = P & {
   readonly [OPTIONAL_BRAND]: true;

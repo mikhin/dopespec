@@ -14,6 +14,7 @@ export { policy } from "./policy.js";
 export type { PolicyDef, PolicyRule } from "./policy.js";
 
 export {
+  arrayOf,
   boolean,
   date,
   lifecycle,
@@ -23,6 +24,7 @@ export {
   string,
 } from "./props.js";
 export type {
+  ArrayProp,
   BooleanProp,
   DateProp,
   InferContext,
