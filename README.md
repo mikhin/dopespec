@@ -35,6 +35,8 @@ Generates: TypeScript types, transition functions with guards, domain events, co
 
 Prop types: `string()`, `number()`, `boolean()`, `date()`, `oneOf([...])`, `arrayOf(prop)` (e.g. `arrayOf(date())` → `Date[]`), `optional(prop)`, and `lifecycle(states)`.
 
+Relations: `belongsTo(M)` / `hasMany(M)` generate normalized id refs (`xId` / `xIds`); `embeds(M)` nests the child's props inline as an array (`key: ChildProps[]`) for denormalized aggregates / tree structures.
+
 ### `decisions()` — pure decision table
 
 ```typescript

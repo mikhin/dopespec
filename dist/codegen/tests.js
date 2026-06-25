@@ -79,13 +79,7 @@ export const generateTests = (model) => {
         ? Object.entries(model.props)
         : [];
     // Build relation field entries
-    const relations = getRelations(model);
-    const relationEntries = [];
-    for (const [key, rel] of relations) {
-        const fieldName = relationIdField(key, rel.kind);
-        const defaultValue = rel.kind === "belongsTo" ? "''" : "[]";
-        relationEntries.push([fieldName, defaultValue]);
-    }
+    const relationEntries = relationFixtureEntries(getRelations(model));
     // Collect transition function names that have scenarios
     const transitionFnNames = [];
     for (const [name, transition] of transitions) {
@@ -122,4 +116,13 @@ export const generateTests = (model) => {
     lines.push("");
     return lines.join("\n");
 };
+/** Fixture [field, defaultSource] pairs for a model's relations. */
+function relationFixtureEntries(relations) {
+    return relations.map(([key, rel]) => {
+        if (rel.kind === "embeds")
+            return [key, "[]"];
+        const fieldName = relationIdField(key, rel.kind);
+        return [fieldName, rel.kind === "belongsTo" ? "''" : "[]"];
+    });
+}
 //# sourceMappingURL=tests.js.map

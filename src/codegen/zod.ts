@@ -1,4 +1,5 @@
 import type { ModelDef } from "../schema/model.js";
+import type { RelationDef } from "../schema/relations.js";
 
 import { isOptional } from "../schema/props.js";
 import {
@@ -6,6 +7,7 @@ import {
   getRelations,
   propKindToZod,
   relationIdField,
+  toKebabCase,
 } from "./utils.js";
 
 /** Generate Zod validation schema from a model's props and relations. Targets Zod v3.x / v4.x (z.object, z.enum). */
@@ -16,12 +18,8 @@ export const generateZod = (model: ModelDef): string => {
   if (!hasProps && relations.length === 0) return "";
 
   const typeName = capitalize(model.name);
-  const lines: string[] = [];
-
-  lines.push(`import { z } from 'zod';`);
-  lines.push("");
-
   const fields: string[] = [];
+  const imports = new Set<string>();
 
   if (model.props) {
     for (const [key, prop] of Object.entries(model.props)) {
@@ -32,15 +30,13 @@ export const generateZod = (model: ModelDef): string => {
     }
   }
 
-  // Relations: belongsTo → z.string() (foreign key id), hasMany → z.array(z.string()) (ids)
-  for (const [key, rel] of relations) {
-    const fieldName = relationIdField(key, rel.kind);
-    const zodType =
-      rel.kind === "belongsTo" ? "z.string()" : "z.array(z.string())";
+  fields.push(...relationZodFields(relations, imports));
 
-    fields.push(`  ${fieldName}: ${zodType},`);
-  }
+  const lines: string[] = [`import { z } from 'zod';`];
 
+  if (imports.size > 0) lines.push(...[...imports].sort());
+
+  lines.push("");
   lines.push(`export const ${typeName}Schema = z.object({`);
   lines.push(...fields);
   lines.push(`});`);
@@ -48,3 +44,27 @@ export const generateZod = (model: ModelDef): string => {
 
   return lines.join("\n");
 };
+
+/** Relation fields for a Zod schema; collects child-schema imports for embeds. */
+function relationZodFields(
+  relations: [string, RelationDef][],
+  imports: Set<string>,
+): string[] {
+  return relations.map(([key, rel]) => {
+    if (rel.kind === "embeds") {
+      const childSchema = `${capitalize(rel.target.name)}Schema`;
+
+      imports.add(
+        `import { ${childSchema} } from './${toKebabCase(rel.target.name)}.zod.js';`,
+      );
+
+      return `  ${key}: z.array(${childSchema}),`;
+    }
+
+    const fieldName = relationIdField(key, rel.kind);
+    const zodType =
+      rel.kind === "belongsTo" ? "z.string()" : "z.array(z.string())";
+
+    return `  ${fieldName}: ${zodType},`;
+  });
+}
