@@ -510,7 +510,7 @@ function seedCandidates(
   stringLiterals: readonly string[],
 ): readonly unknown[] {
   if (prop.kind === "lifecycle" || prop.kind === "oneOf") {
-    return prop.values as readonly string[];
+    return prop.values as readonly unknown[];
   }
 
   if (prop.kind === "boolean") return [true, false];

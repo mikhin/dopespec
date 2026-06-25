@@ -27,6 +27,11 @@ describe("props", () => {
         expect(prop.kind).toBe("oneOf");
         expect(prop.values).toEqual(["a", "b", "c"]);
     });
+    it("oneOf() captures numeric values", () => {
+        const prop = oneOf([1, 2, 3]);
+        expect(prop.kind).toBe("oneOf");
+        expect(prop.values).toEqual([1, 2, 3]);
+    });
     // as const arrays tested for backward compat; lifecycle.states() is the preferred API
     it("lifecycle() captures values", () => {
         const states = ["pending", "done"];

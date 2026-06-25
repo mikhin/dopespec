@@ -30,11 +30,12 @@ type FieldsOf<P> = { [K in keyof P]: PropDefFor<P[K]> };
  * Maps a TypeScript type to the corresponding PropDef variant.
  * Used by FieldsOf to enforce compile-time validation between Payload and fields.
  *
- * A *literal* string union (e.g. `'left' | 'right'`) accepts a matching
- * `oneOf([...])` as well as `string()`. `oneOf` is preferred because the union
- * then survives into the generated command types instead of widening to `string`;
- * `string()` stays valid for backwards compatibility. The wide `string` type only
- * accepts `string()`. The `[T]` tuple wrappers stop the conditional from
+ * A *literal* union of strings (e.g. `'left' | 'right'`) or numbers (e.g.
+ * `1 | 2 | 3`) accepts a matching `oneOf([...])` as well as the scalar `string()`
+ * / `number()`. `oneOf` is preferred because the union then survives into the
+ * generated command types instead of widening to `string` / `number`; the scalar
+ * stays valid for backwards compatibility. The wide `string` / `number` types only
+ * accept the scalar. The `[T]` tuple wrappers stop the conditional from
  * distributing over the union, so a single `OneOfProp<readonly ('left'|'right')[]>`
  * is produced rather than one per member.
  */
@@ -43,7 +44,9 @@ type PropDefFor<T> = [T] extends [string]
     ? StringProp
     : OneOfProp<readonly T[]> | StringProp
   : [T] extends [number]
-    ? NumberProp
+    ? [number] extends [T]
+      ? NumberProp
+      : NumberProp | OneOfProp<readonly T[]>
     : [T] extends [boolean]
       ? BooleanProp
       : [T] extends [Date]

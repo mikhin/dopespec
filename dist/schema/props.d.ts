@@ -13,7 +13,7 @@ export type InferPropType<P> = P extends StringProp ? string : P extends NumberP
  */
 export type LifecycleProp<T extends readonly string[]> = PropDef<"lifecycle", T>;
 export type NumberProp = PropDef<"number", null>;
-export type OneOfProp<T extends readonly string[]> = PropDef<"oneOf", T>;
+export type OneOfProp<T extends readonly (number | string)[]> = PropDef<"oneOf", T>;
 export type PropDef<K extends PropKind = PropKind, V = unknown> = {
     readonly kind: K;
     readonly values: V;
@@ -52,7 +52,7 @@ export type OptionalPropDef<P extends PropDef = PropDef> = P & {
 export declare const optional: <P extends PropDef>(prop: P & (P extends LifecycleProp<readonly string[]> ? never : P)) => OptionalPropDef<P>;
 /** Check if a prop was wrapped with optional() at runtime. */
 export declare const isOptional: (prop: PropDef) => prop is OptionalPropDef;
-export declare const oneOf: <const T extends readonly string[]>(values: T) => OneOfProp<T>;
+export declare const oneOf: <const T extends readonly (number | string)[]>(values: T) => OneOfProp<T>;
 declare function _lifecycle<const T extends readonly string[]>(values: StatesObject<T>): LifecycleProp<T>;
 declare function _lifecycle<const T extends readonly string[]>(values: T): LifecycleProp<T>;
 export declare const lifecycle: typeof _lifecycle & {

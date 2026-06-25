@@ -30,6 +30,10 @@ export declare const toKebabCase: (name: string) => string;
  * Use singular relation keys for clean output (e.g. `item: hasMany(Pet)` not `items`).
  */
 export declare const relationIdField: (key: string, kind: "belongsTo" | "hasMany") => string;
+/** A oneOf/lifecycle member: lifecycle is always string, oneOf can be string or number. */
+type EnumValue = number | string;
+/** Format enum members as a TS union: strings get quoted, numbers stay bare. */
+export declare const formatUnionValues: (values: readonly EnumValue[]) => string;
 /** Map a PropDef kind to its TypeScript type string. */
 export declare const propKindToTS: (prop: PropDef) => string;
 /** Map a PropDef kind to its Zod validator string. */
@@ -82,4 +86,5 @@ export declare const buildModelDefaults: (model: ModelDef) => Record<string, unk
  * @param requiresModels - Map of requires key → resolved ModelDef
  */
 export declare const resolvePolicyGuardBody: (guard: PolicyDef["rules"][number]["when"], body: string, requiresModels: Record<string, ModelDef>) => string;
+export {};
 //# sourceMappingURL=utils.d.ts.map

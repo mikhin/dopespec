@@ -33,11 +33,11 @@ const Order = model("Order", {
 
 Generates: TypeScript types, transition functions with guards, domain events, command types, invariant validators, orchestrator skeletons, unit tests (BDD), e2e stubs, Zod schema, Mermaid state diagram.
 
-Prop types: `string()`, `number()`, `boolean()`, `date()`, `oneOf([...])`, `arrayOf(prop)` (e.g. `arrayOf(date())` → `Date[]`), `optional(prop)`, and `lifecycle(states)`.
+Prop types: `string()`, `number()`, `boolean()`, `date()`, `oneOf([...])` (string **or** numeric literals — `oneOf(['a','b'])` → `'a' | 'b'`, `oneOf([1,2,3])` → `1 | 2 | 3`), `arrayOf(prop)` (e.g. `arrayOf(date())` → `Date[]`), `optional(prop)`, and `lifecycle(states)`.
 
 Relations: `belongsTo(M)` / `hasMany(M)` generate normalized id refs (`xId` / `xIds`); `embeds(M)` nests the child's props inline as an array (`key: ChildProps[]`) for denormalized aggregates / tree structures.
 
-Action payloads: a literal string-union field accepts a matching `oneOf([...])` so the union survives into the generated command type instead of widening to `string` — `action<{ direction: "left" | "right" }>({ direction: oneOf(["left", "right"]) })` generates `payload: { direction: 'left' | 'right' }`. `string()` stays valid for such fields too.
+Action payloads: a literal string- or numeric-union field accepts a matching `oneOf([...])` so the union survives into the generated command type instead of widening to `string` / `number` — `action<{ direction: "left" | "right" }>({ direction: oneOf(["left", "right"]) })` generates `payload: { direction: 'left' | 'right' }`. The scalar (`string()` / `number()`) stays valid for such fields too.
 
 ### `decisions()` — pure decision table
 
