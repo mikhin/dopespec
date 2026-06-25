@@ -16,6 +16,7 @@ import {
   generateDecisionTests,
   generateE2EStubs,
   generateEvents,
+  generateFeatureMap,
   generateInvariants,
   generateMermaid,
   generateOrchestrators,
@@ -45,7 +46,14 @@ import { action } from "../schema/actions.js";
 import { decisions } from "../schema/decisions.js";
 import { model } from "../schema/model.js";
 import { policy } from "../schema/policy.js";
-import { boolean, number, oneOf, optional, string } from "../schema/props.js";
+import {
+  boolean,
+  lifecycle,
+  number,
+  oneOf,
+  optional,
+  string,
+} from "../schema/props.js";
 import { belongsTo, hasMany } from "../schema/relations.js";
 
 // Minimal model with no optional fields
@@ -1132,5 +1140,102 @@ describe("resolvePolicyGuardBody", () => {
 
     expect(resolved).toContain("'suspended'");
     expect(resolved).not.toContain("states.suspended");
+  });
+});
+
+describe("generateFeatureMap", () => {
+  it("groups constructs by area with one node per construct", () => {
+    const output = generateFeatureMap([
+      { area: "Sales", def: Order as ModelDef },
+      { area: "Sales", def: CreditTier as DecisionDef },
+      { area: "Risk", def: NoSuspendedCustomerOrders as PolicyDef },
+    ]);
+
+    expect(output).toContain("graph LR");
+    expect(output).toContain('["Sales"]');
+    expect(output).toContain('["Risk"]');
+    expect(output).toContain("Order · model");
+    expect(output).toContain("CreditTier · decisions");
+    expect(output).toContain("NoSuspendedCustomerOrders · policy");
+  });
+
+  it("uses actions / decision rules / policy effect as leaves", () => {
+    const output = generateFeatureMap([
+      { area: "A", def: Order as ModelDef },
+      { area: "A", def: CreditTier as DecisionDef },
+      { area: "A", def: NoSuspendedCustomerOrders as PolicyDef },
+    ]);
+
+    expect(output).toContain('["addItem"]');
+    expect(output).toContain("extraItemId=tier_3 → credits=5");
+    expect(output).toContain("prevent/warn: Order.addItem");
+  });
+
+  it("falls back to transitions when a model has no actions", () => {
+    const states = lifecycle.states("draft", "done");
+    const FlowOnly = model("FlowOnly", {
+      props: { status: lifecycle(states) },
+      transitions: ({ from }) => ({
+        finish: from(states.draft).to(states.done),
+      }),
+    });
+
+    const output = generateFeatureMap([
+      { area: "A", def: FlowOnly as ModelDef },
+    ]);
+
+    expect(output).toContain('["finish"]');
+  });
+
+  it("emits areas in first-appearance order", () => {
+    const output = generateFeatureMap([
+      { area: "Zeta", def: Order as ModelDef },
+      { area: "Alpha", def: Customer as ModelDef },
+    ]);
+
+    expect(output.indexOf('["Zeta"]')).toBeLessThan(
+      output.indexOf('["Alpha"]'),
+    );
+  });
+
+  it("wraps the diagram in a titled markdown doc", () => {
+    const output = generateFeatureMap([{ area: "A", def: Order as ModelDef }], {
+      title: "Widget map",
+    });
+
+    expect(output).toContain("# Widget map");
+    expect(output).toContain("```mermaid");
+  });
+});
+
+describe("area tag", () => {
+  it("is stored on model, decisions, and policy", () => {
+    const Tagged = model("Tagged", {
+      actions: { ping: action() },
+      area: "Catalog",
+      props: { name: string() },
+    });
+    const TaggedDecision = decisions("TaggedDecision", {
+      area: "Pricing",
+      inputs: { tier: oneOf(["a", "b"]) },
+      outputs: { price: number() },
+      rules: [{ then: { price: 1 }, when: { tier: "a" } }],
+    });
+    const TaggedPolicy = policy("TaggedPolicy", {
+      area: "Risk",
+      on: { action: "ping", model: Tagged },
+      requires: { other: belongsTo(Tagged) },
+      rules: [{ effect: "warn", when: () => true }],
+    });
+
+    expect(Tagged.area).toBe("Catalog");
+    expect(TaggedDecision.area).toBe("Pricing");
+    expect(TaggedPolicy.area).toBe("Risk");
+  });
+
+  it("is absent when not provided", () => {
+    const Untagged = model("Untagged", { props: { name: string() } });
+
+    expect("area" in Untagged).toBe(false);
   });
 });

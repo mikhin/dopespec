@@ -45,12 +45,15 @@ export function decisions(name, config) {
         validateRuleWhen(rule, i, inputKeys);
         validateRuleThen(rule, i, outputKeys);
     }
-    return {
+    const result = {
         inputs: cfg.inputs,
         kind: "decision",
         name: trimmed,
         outputs: cfg.outputs,
         rules: cfg.rules,
     };
+    if (cfg.area !== undefined)
+        result["area"] = cfg.area;
+    return result;
 }
 //# sourceMappingURL=decisions.js.map

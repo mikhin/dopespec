@@ -138,6 +138,29 @@ src/
 
 `generated/` is always overwritten. `src/` is never overwritten — your code stays safe.
 
+## Feature map
+
+`dopespec map` rolls every construct into a single Mermaid tree — a bird's-eye view that complements the per-construct diagrams from `generate`. Useful for onboarding and for non-technical readers (PM / design).
+
+```bash
+dopespec map schema/                          # scan a folder
+dopespec map schema/order.ts                  # …or a single file
+dopespec map schema/ --out docs/feature-map.md
+```
+
+Constructs are grouped by **area**. Set it explicitly on any construct:
+
+```typescript
+const Order = model("Order", {
+  area: "Sales",
+  props: {
+    /* … */
+  },
+});
+```
+
+If `area` is omitted, `map` falls back to the construct's top-level folder under the scanned path (so `schema/sales/order.ts` → `sales`).
+
 ## Where It Shines
 
 - **`decisions()`** for permission tables — strongest use case, direct replacement for hand-written if/else
@@ -190,7 +213,7 @@ it('given {"total":100}, when pay, then status = paid', () => {
 - [x] npm publish
 - [ ] Self-hosting (dopespec describes its own types in its own schema)
 - [ ] ESLint plugin (static analysis: unreachable states, dead actions, missing scenarios)
-- [ ] Non-tech participation (diagrams + markdown tables readable by PM/designers)
+- [x] Non-tech participation (diagrams + markdown tables readable by PM/designers) — see `dopespec map`
 - [ ] Visual editor (Cloud, paid)
 
 ## Influenced By

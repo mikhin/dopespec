@@ -1,5 +1,6 @@
 import type { InferPropType, PropDef } from "./props.js";
 export type DecisionDef<Name extends string = string, I extends Record<string, PropDef> = Record<string, PropDef>, O extends Record<string, PropDef> = Record<string, PropDef>> = {
+    readonly area?: string;
     readonly inputs: I;
     readonly kind: "decision";
     readonly name: Name;
@@ -21,6 +22,8 @@ type InferValuesRaw<P extends Record<string, PropDef>> = {
     [K in keyof P]: InferPropType<P[K]>;
 };
 export declare function decisions<const Name extends string, const I extends Record<string, PropDef>, const O extends Record<string, PropDef>>(name: Name, config: {
+    /** Optional grouping label for `dopespec map` (falls back to folder). */
+    readonly area?: string;
     readonly inputs: I;
     readonly outputs: O;
     readonly rules: readonly DecisionRule<I, O>[];

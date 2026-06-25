@@ -2,6 +2,7 @@ import type { RelationDef } from "./relations.js";
 import type { ModelRef } from "./types.js";
 
 export type PolicyDef<Name extends string = string> = {
+  readonly area?: string;
   readonly kind: "policy";
   readonly name: Name;
   readonly on: { readonly action: string; readonly model: ModelRef };
@@ -21,6 +22,8 @@ const VALID_EFFECTS = new Set(["prevent", "warn"]);
 export function policy<const Name extends string>(
   name: Name,
   config: {
+    /** Optional grouping label for `dopespec map` (falls back to folder). */
+    readonly area?: string;
     readonly on: { readonly action: string; readonly model: ModelRef };
     readonly requires: Record<string, RelationDef>;
     readonly rules: readonly PolicyRule[];
@@ -34,6 +37,7 @@ export function policy(name: string, config: Record<string, unknown>) {
   if (!trimmed) throw new Error("policy() requires a non-empty name");
 
   const cfg = config as {
+    area?: string;
     on: { action: string; model: ModelRef };
     requires: Record<string, RelationDef>;
     rules: readonly { effect: string; when: unknown }[];
@@ -44,13 +48,17 @@ export function policy(name: string, config: Record<string, unknown>) {
   validateRequires(cfg.requires);
   validateRules(cfg.rules);
 
-  return {
-    kind: "policy" as const,
+  const result: Record<string, unknown> = {
+    kind: "policy",
     name: trimmed,
     on: { action, model: cfg.on.model },
     requires: cfg.requires,
     rules: cfg.rules,
   };
+
+  if (cfg.area !== undefined) result["area"] = cfg.area;
+
+  return result;
 }
 
 function validateOn(on: { action: string; model: ModelRef }): string {

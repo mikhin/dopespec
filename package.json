@@ -17,7 +17,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "generate": "tsx src/cli/generate.ts",
+    "generate": "tsx src/cli/index.ts generate",
+    "map": "tsx src/cli/index.ts map",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",

@@ -9,7 +9,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const cli = join(__dirname, "..", "dist", "cli", "generate.js");
+const cli = join(__dirname, "..", "dist", "cli", "index.js");
 
 // Resolve tsx from dopespec's own node_modules so the user doesn't need to install it
 const require = createRequire(import.meta.url);

@@ -9,13 +9,16 @@ export function policy(name, config) {
     const action = validateOn(cfg.on);
     validateRequires(cfg.requires);
     validateRules(cfg.rules);
-    return {
+    const result = {
         kind: "policy",
         name: trimmed,
         on: { action, model: cfg.on.model },
         requires: cfg.requires,
         rules: cfg.rules,
     };
+    if (cfg.area !== undefined)
+        result["area"] = cfg.area;
+    return result;
 }
 function validateOn(on) {
     if (!on || typeof on !== "object" || !on.model || on.model.kind !== "model")
