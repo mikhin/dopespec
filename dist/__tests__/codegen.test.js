@@ -11,7 +11,7 @@ import { action } from "../schema/actions.js";
 import { decisions } from "../schema/decisions.js";
 import { model } from "../schema/model.js";
 import { policy } from "../schema/policy.js";
-import { boolean, lifecycle, number, oneOf, optional, string, } from "../schema/props.js";
+import { arrayOf, boolean, date, lifecycle, number, oneOf, optional, string, } from "../schema/props.js";
 import { belongsTo, hasMany } from "../schema/relations.js";
 // Minimal model with no optional fields
 const Minimal = model("Minimal", {});
@@ -787,6 +787,31 @@ describe("resolvePolicyGuardBody", () => {
         });
         expect(resolved).toContain("'suspended'");
         expect(resolved).not.toContain("states.suspended");
+    });
+});
+describe("arrayOf", () => {
+    const Doc = model("Doc", {
+        props: {
+            dates: arrayOf(date()),
+            labels: optional(arrayOf(oneOf(["draft", "live"]))),
+            tags: arrayOf(string()),
+        },
+    });
+    it("generates array TypeScript types", () => {
+        const output = generateTypes(Doc);
+        expect(output).toContain("tags: string[]");
+        expect(output).toContain("dates: Date[]");
+        expect(output).toContain("labels?: ('draft' | 'live')[]");
+    });
+    it("generates array Zod schemas", () => {
+        const output = generateZod(Doc);
+        expect(output).toContain("tags: z.array(z.string())");
+        expect(output).toContain("dates: z.array(z.date())");
+        expect(output).toContain("z.array(z.enum(['draft', 'live']))");
+    });
+    it("throws when wrapping a lifecycle prop", () => {
+        const states = lifecycle.states("a", "b");
+        expect(() => arrayOf(lifecycle(states))).toThrow("lifecycle");
     });
 });
 describe("generateFeatureMap", () => {

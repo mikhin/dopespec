@@ -33,6 +33,8 @@ const Order = model("Order", {
 
 Generates: TypeScript types, transition functions with guards, domain events, command types, invariant validators, orchestrator skeletons, unit tests (BDD), e2e stubs, Zod schema, Mermaid state diagram.
 
+Prop types: `string()`, `number()`, `boolean()`, `date()`, `oneOf([...])`, `arrayOf(prop)` (e.g. `arrayOf(date())` → `Date[]`), `optional(prop)`, and `lifecycle(states)`.
+
 ### `decisions()` — pure decision table
 
 ```typescript
@@ -209,7 +211,7 @@ it('given {"total":100}, when pay, then status = paid', () => {
 
 ## Roadmap
 
-- [ ] Array prop type (`dates: arrayOf(date())`) — needed for real-world models like excluded dates, tag lists
+- [x] Array prop type (`dates: arrayOf(date())`) — needed for real-world models like excluded dates, tag lists
 - [x] npm publish
 - [ ] Self-hosting (dopespec describes its own types in its own schema)
 - [ ] ESLint plugin (static analysis: unreachable states, dead actions, missing scenarios)

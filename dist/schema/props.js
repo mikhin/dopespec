@@ -7,6 +7,13 @@ export const string = () => ({ kind: "string", values: null });
 export const number = () => ({ kind: "number", values: null });
 export const boolean = () => ({ kind: "boolean", values: null });
 export const date = () => ({ kind: "date", values: null });
+/** A list of a scalar prop: arrayOf(string()) → string[], arrayOf(date()) → Date[]. */
+export const arrayOf = (inner) => {
+    if (inner.kind === "lifecycle") {
+        throw new Error("arrayOf() cannot wrap a lifecycle prop");
+    }
+    return { kind: "array", values: inner };
+};
 /** Wraps a prop as optional. Lifecycle props cannot be optional — a model always has a current state. */
 export const optional = (prop) => {
     if (prop.kind === "lifecycle") {

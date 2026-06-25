@@ -1,9 +1,11 @@
+/** Array prop — a list of a scalar inner prop (e.g. arrayOf(date()) → Date[]). */
+export type ArrayProp<P extends PropDef = PropDef> = PropDef<"array", P>;
 export type BooleanProp = PropDef<"boolean", null>;
 export type DateProp = PropDef<"date", null>;
 export type InferContext<Props extends Record<string, PropDef>> = InferContextRaw<Props> extends infer T ? {
     [K in keyof T]: T[K];
 } & {} : never;
-export type InferPropType<P> = P extends StringProp ? string : P extends NumberProp ? number : P extends BooleanProp ? boolean : P extends DateProp ? Date : P extends OneOfProp<infer T> ? T[number] : P extends LifecycleProp<infer T> ? T[number] : never;
+export type InferPropType<P> = P extends StringProp ? string : P extends NumberProp ? number : P extends BooleanProp ? boolean : P extends DateProp ? Date : P extends OneOfProp<infer T> ? T[number] : P extends LifecycleProp<infer T> ? T[number] : P extends ArrayProp<infer Inner> ? InferPropType<Inner>[] : never;
 /**
  * Lifecycle prop — defines the state machine states for a model.
  * Only lifecycle() values are valid in from().to() transitions.
@@ -16,7 +18,7 @@ export type PropDef<K extends PropKind = PropKind, V = unknown> = {
     readonly kind: K;
     readonly values: V;
 };
-export type PropKind = "boolean" | "date" | "lifecycle" | "number" | "oneOf" | "string";
+export type PropKind = "array" | "boolean" | "date" | "lifecycle" | "number" | "oneOf" | "string";
 export type StringProp = PropDef<"string", null>;
 type InferContextRaw<Props extends Record<string, PropDef>> = {
     [K in keyof Props as Props[K] extends OptionalPropDef ? K : never]?: InferPropType<Props[K]>;
@@ -41,6 +43,8 @@ export declare const string: () => StringProp;
 export declare const number: () => NumberProp;
 export declare const boolean: () => BooleanProp;
 export declare const date: () => DateProp;
+/** A list of a scalar prop: arrayOf(string()) → string[], arrayOf(date()) → Date[]. */
+export declare const arrayOf: <P extends PropDef>(inner: P & (P extends LifecycleProp<readonly string[]> ? never : P)) => ArrayProp<P>;
 export type OptionalPropDef<P extends PropDef = PropDef> = P & {
     readonly [OPTIONAL_BRAND]: true;
 };

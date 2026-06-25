@@ -97,6 +97,16 @@ const formatUnionValues = (values: readonly string[]): string =>
 /** Map a PropDef kind to its TypeScript type string. */
 export const propKindToTS = (prop: PropDef): string => {
   switch (prop.kind) {
+    case "array": {
+      const inner = prop.values as PropDef;
+      const innerTs = propKindToTS(inner);
+
+      // Parenthesize union inners so `('a' | 'b')[]` parses correctly.
+      return inner.kind === "lifecycle" || inner.kind === "oneOf"
+        ? `(${innerTs})[]`
+        : `${innerTs}[]`;
+    }
+
     case "boolean":
       return "boolean";
 
@@ -129,6 +139,9 @@ const formatZodEnum = (values: readonly string[]): string => {
 /** Map a PropDef kind to its Zod validator string. */
 export const propKindToZod = (prop: PropDef): string => {
   switch (prop.kind) {
+    case "array":
+      return `z.array(${propKindToZod(prop.values as PropDef)})`;
+
     case "boolean":
       return "z.boolean()";
 
@@ -333,6 +346,9 @@ export const valueToSource = (value: unknown): string => {
 /** Return a sensible default value (as source code) for a PropDef kind. */
 export const defaultValueForProp = (prop: PropDef): string => {
   switch (prop.kind) {
+    case "array":
+      return "[]";
+
     case "boolean":
       return "false";
 
@@ -386,6 +402,10 @@ export const buildModelDefaults = (
 
   for (const [key, prop] of Object.entries(model.props)) {
     switch (prop.kind) {
+      case "array":
+        defaults[key] = [];
+        break;
+
       case "boolean":
         defaults[key] = false;
         break;
