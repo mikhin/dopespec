@@ -37,7 +37,7 @@ export type {
   PropKind,
   StringProp,
 } from "./props.js";
-export { belongsTo, hasMany } from "./relations.js";
+export { belongsTo, embeds, hasMany } from "./relations.js";
 export type { RelationDef, RelationKind } from "./relations.js";
 export type {
   Scenario,

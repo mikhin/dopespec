@@ -1,4 +1,5 @@
 import type { ModelDef } from "../schema/model.js";
+import type { RelationDef } from "../schema/relations.js";
 
 import { isOptional } from "../schema/props.js";
 import {
@@ -6,6 +7,7 @@ import {
   getRelations,
   propKindToTS,
   relationIdField,
+  toKebabCase,
 } from "./utils.js";
 
 /** Generate TypeScript type definitions from a model's props and relations. */
@@ -48,18 +50,42 @@ export const generateTypes = (model: ModelDef): string => {
     return `  ${key}${opt}: ${tsType};`;
   });
 
-  // Add relation fields: belongsTo → string (foreign key id), hasMany → string[] (ids)
-  for (const [key, rel] of relations) {
-    const targetName = rel.target.name;
-    const fieldName = relationIdField(key, rel.kind);
-    const tsType = rel.kind === "belongsTo" ? "string" : "string[]";
+  // Relation fields: belongsTo → id, hasMany → ids, embeds → nested child[].
+  const imports = new Set<string>();
 
-    propsFields.push(`  ${fieldName}: ${tsType}; // ${rel.kind} ${targetName}`);
-  }
+  propsFields.push(...relationTypeFields(relations, imports));
 
   lines.push(`export type ${typeName}Props = {`);
   lines.push(...propsFields);
   lines.push(`};`);
 
-  return lines.join("\n") + "\n";
+  const header =
+    imports.size > 0 ? `${[...imports].sort().join("\n")}\n\n` : "";
+
+  return header + lines.join("\n") + "\n";
 };
+
+/** Relation fields for a Props type; collects child-type imports for embeds. */
+function relationTypeFields(
+  relations: [string, RelationDef][],
+  imports: Set<string>,
+): string[] {
+  return relations.map(([key, rel]) => {
+    const targetName = rel.target.name;
+
+    if (rel.kind === "embeds") {
+      const childType = `${capitalize(targetName)}Props`;
+
+      imports.add(
+        `import type { ${childType} } from './${toKebabCase(targetName)}.types.js';`,
+      );
+
+      return `  ${key}: ${childType}[]; // embeds ${targetName}`;
+    }
+
+    const fieldName = relationIdField(key, rel.kind);
+    const tsType = rel.kind === "belongsTo" ? "string" : "string[]";
+
+    return `  ${fieldName}: ${tsType}; // ${rel.kind} ${targetName}`;
+  });
+}

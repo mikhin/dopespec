@@ -35,6 +35,8 @@ Generates: TypeScript types, transition functions with guards, domain events, co
 
 Prop types: `string()`, `number()`, `boolean()`, `date()`, `oneOf([...])`, `arrayOf(prop)` (e.g. `arrayOf(date())` → `Date[]`), `optional(prop)`, and `lifecycle(states)`.
 
+Relations: `belongsTo(M)` / `hasMany(M)` generate normalized id refs (`xId` / `xIds`); `embeds(M)` nests the child's props inline as an array (`key: ChildProps[]`) for denormalized aggregates / tree structures.
+
 ### `decisions()` — pure decision table
 
 ```typescript
@@ -212,6 +214,7 @@ it('given {"total":100}, when pay, then status = paid', () => {
 ## Roadmap
 
 - [x] Array prop type (`dates: arrayOf(date())`) — needed for real-world models like excluded dates, tag lists
+- [x] Embedded model collections (`embeds(M)` → nested `ChildProps[]`) — denormalized aggregates / trees
 - [x] npm publish
 - [ ] Self-hosting (dopespec describes its own types in its own schema)
 - [ ] ESLint plugin (static analysis: unreachable states, dead actions, missing scenarios)

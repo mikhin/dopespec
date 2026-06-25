@@ -9,7 +9,7 @@ export { policy } from "./policy.js";
 export type { PolicyDef, PolicyRule } from "./policy.js";
 export { arrayOf, boolean, date, lifecycle, number, oneOf, optional, string, } from "./props.js";
 export type { ArrayProp, BooleanProp, DateProp, InferContext, InferPropType, LifecycleProp, NumberProp, OneOfProp, OptionalPropDef, PropDef, PropKind, StringProp, } from "./props.js";
-export { belongsTo, hasMany } from "./relations.js";
+export { belongsTo, embeds, hasMany } from "./relations.js";
 export type { RelationDef, RelationKind } from "./relations.js";
 export type { Scenario, TransitionBuilder, TransitionData, } from "./transitions.js";
 export { ref } from "./types.js";

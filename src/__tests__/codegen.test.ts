@@ -56,7 +56,7 @@ import {
   optional,
   string,
 } from "../schema/props.js";
-import { belongsTo, hasMany } from "../schema/relations.js";
+import { belongsTo, embeds, hasMany } from "../schema/relations.js";
 
 // Minimal model with no optional fields
 const Minimal = model("Minimal", {});
@@ -1174,6 +1174,30 @@ describe("arrayOf", () => {
     const states = lifecycle.states("a", "b");
 
     expect(() => arrayOf(lifecycle(states) as never)).toThrow("lifecycle");
+  });
+});
+
+describe("embeds", () => {
+  const Line = model("Line", { props: { sku: string() } });
+  const Cart = model("Cart", {
+    props: { total: number() },
+    relations: { lines: embeds(Line) },
+  });
+
+  it("generates a nested array type with a child import", () => {
+    const output = generateTypes(Cart as ModelDef);
+
+    expect(output).toContain(
+      "import type { LineProps } from './line.types.js';",
+    );
+    expect(output).toContain("lines: LineProps[]; // embeds Line");
+  });
+
+  it("generates a nested array Zod schema with a child import", () => {
+    const output = generateZod(Cart as ModelDef);
+
+    expect(output).toContain("import { LineSchema } from './line.zod.js';");
+    expect(output).toContain("lines: z.array(LineSchema)");
   });
 });
 

@@ -12,7 +12,7 @@ import { decisions } from "../schema/decisions.js";
 import { model } from "../schema/model.js";
 import { policy } from "../schema/policy.js";
 import { arrayOf, boolean, date, lifecycle, number, oneOf, optional, string, } from "../schema/props.js";
-import { belongsTo, hasMany } from "../schema/relations.js";
+import { belongsTo, embeds, hasMany } from "../schema/relations.js";
 // Minimal model with no optional fields
 const Minimal = model("Minimal", {});
 // Model with actions but no fields metadata
@@ -812,6 +812,23 @@ describe("arrayOf", () => {
     it("throws when wrapping a lifecycle prop", () => {
         const states = lifecycle.states("a", "b");
         expect(() => arrayOf(lifecycle(states))).toThrow("lifecycle");
+    });
+});
+describe("embeds", () => {
+    const Line = model("Line", { props: { sku: string() } });
+    const Cart = model("Cart", {
+        props: { total: number() },
+        relations: { lines: embeds(Line) },
+    });
+    it("generates a nested array type with a child import", () => {
+        const output = generateTypes(Cart);
+        expect(output).toContain("import type { LineProps } from './line.types.js';");
+        expect(output).toContain("lines: LineProps[]; // embeds Line");
+    });
+    it("generates a nested array Zod schema with a child import", () => {
+        const output = generateZod(Cart);
+        expect(output).toContain("import { LineSchema } from './line.zod.js';");
+        expect(output).toContain("lines: z.array(LineSchema)");
     });
 });
 describe("generateFeatureMap", () => {

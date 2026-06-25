@@ -1,5 +1,6 @@
 import type { ModelDef } from "../schema/model.js";
 import type { PropDef } from "../schema/props.js";
+import type { RelationDef } from "../schema/relations.js";
 import type { Scenario, TransitionData } from "../schema/transitions.js";
 
 import { isOptional } from "../schema/props.js";
@@ -138,15 +139,7 @@ export const generateTests = (model: ModelDef): string => {
     : [];
 
   // Build relation field entries
-  const relations = getRelations(model);
-  const relationEntries: [string, string][] = [];
-
-  for (const [key, rel] of relations) {
-    const fieldName = relationIdField(key, rel.kind);
-    const defaultValue = rel.kind === "belongsTo" ? "''" : "[]";
-
-    relationEntries.push([fieldName, defaultValue]);
-  }
+  const relationEntries = relationFixtureEntries(getRelations(model));
 
   // Collect transition function names that have scenarios
   const transitionFnNames: string[] = [];
@@ -193,3 +186,16 @@ export const generateTests = (model: ModelDef): string => {
 
   return lines.join("\n");
 };
+
+/** Fixture [field, defaultSource] pairs for a model's relations. */
+function relationFixtureEntries(
+  relations: [string, RelationDef][],
+): [string, string][] {
+  return relations.map(([key, rel]) => {
+    if (rel.kind === "embeds") return [key, "[]"];
+
+    const fieldName = relationIdField(key, rel.kind);
+
+    return [fieldName, rel.kind === "belongsTo" ? "''" : "[]"];
+  });
+}

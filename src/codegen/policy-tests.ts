@@ -235,6 +235,11 @@ function emitModelLiteral(
     for (const [key, rel] of Object.entries(model.relations).sort(([a], [b]) =>
       a.localeCompare(b),
     )) {
+      if (rel.kind === "embeds") {
+        entries.push(`${key}: []`);
+        continue;
+      }
+
       const field = relationIdField(key, rel.kind);
 
       entries.push(rel.kind === "belongsTo" ? `${field}: ''` : `${field}: []`);
