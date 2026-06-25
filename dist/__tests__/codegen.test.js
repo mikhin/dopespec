@@ -34,6 +34,27 @@ const WithOptionalEnum = model("Widget", {
         name: string(),
     },
 });
+// Model with an action whose payload field is a literal string union, expressed
+// with oneOf() so the union survives into the generated command type.
+const WithOneOfAction = model("Board", {
+    actions: {
+        moveColumn: action({
+            columnId: string(),
+            direction: oneOf(["left", "right"]),
+        }),
+        setPriority: action({
+            level: oneOf([1, 2, 3]),
+        }),
+    },
+    props: { title: string() },
+});
+// Model with a numeric oneOf prop — union members are numbers, not strings.
+const WithNumericEnum = model("Rotation", {
+    props: {
+        angle: oneOf([0, 90, 180, 270]),
+        name: string(),
+    },
+});
 // --- generateTypes ---
 describe("generateTypes", () => {
     it("generates status union and props interface for Order", () => {
@@ -81,6 +102,11 @@ describe("generateTypes", () => {
         const output = generateTypes(WithOptionalEnum);
         expect(output).toContain("color?: WidgetColor");
         expect(output).toContain("name: string");
+    });
+    it("generates a bare numeric union for a numeric oneOf prop", () => {
+        const output = generateTypes(WithNumericEnum);
+        expect(output).toContain("export type RotationAngle = 0 | 90 | 180 | 270;");
+        expect(output).toContain("angle: RotationAngle");
     });
 });
 // --- generateTransitions ---
@@ -150,6 +176,15 @@ describe("generateCommands", () => {
     });
     it("returns empty string for minimal model", () => {
         expect(generateCommands(Minimal)).toBe("");
+    });
+    it("emits a literal union for a oneOf action field", () => {
+        const output = generateCommands(WithOneOfAction);
+        expect(output).toContain("direction: 'left' | 'right'");
+        expect(output).toContain("columnId: string");
+    });
+    it("emits a bare numeric union for a numeric oneOf action field", () => {
+        const output = generateCommands(WithOneOfAction);
+        expect(output).toContain("level: 1 | 2 | 3");
     });
 });
 // --- generateInvariants ---
@@ -275,6 +310,10 @@ describe("generateZod", () => {
         const output = generateZod(WithOptionalEnum);
         expect(output).toContain("z.enum(['red', 'blue', 'green']).optional()");
     });
+    it("generates a z.literal union for a numeric oneOf prop", () => {
+        const output = generateZod(WithNumericEnum);
+        expect(output).toContain("z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)])");
+    });
 });
 // --- generateMermaid ---
 describe("generateMermaid", () => {
@@ -314,6 +353,39 @@ describe("action() fields", () => {
         expect(a.fields?.["name"]?.kind).toBe("string");
         expect(a.fields?.["score"]?.kind).toBe("number");
         expect(a.fields?.["active"]?.kind).toBe("boolean");
+    });
+    it("accepts oneOf() for a literal string-union field", () => {
+        const a = action({
+            direction: oneOf(["left", "right"]),
+        });
+        expect(a.fields?.["direction"]?.kind).toBe("oneOf");
+        expect(a.fields?.["direction"]?.values).toEqual(["left", "right"]);
+    });
+    it("still accepts string() for a literal string-union field (backwards compatible)", () => {
+        const a = action({
+            direction: string(),
+        });
+        expect(a.fields?.["direction"]?.kind).toBe("string");
+    });
+    it("accepts oneOf() for a literal numeric-union field", () => {
+        const a = action({
+            level: oneOf([1, 2, 3]),
+        });
+        expect(a.fields?.["level"]?.kind).toBe("oneOf");
+        expect(a.fields?.["level"]?.values).toEqual([1, 2, 3]);
+    });
+    it("still accepts number() for a literal numeric-union field (backwards compatible)", () => {
+        const a = action({
+            level: number(),
+        });
+        expect(a.fields?.["level"]?.kind).toBe("number");
+    });
+    it("rejects a oneOf() whose values fall outside the field's union", () => {
+        const a = action({
+            // @ts-expect-error -- 'up' is not part of 'left' | 'right'
+            direction: oneOf(["left", "up"]),
+        });
+        expect(a.fields?.["direction"]?.kind).toBe("oneOf");
     });
     it("throws on invalid field values at runtime", () => {
         expect(() => 

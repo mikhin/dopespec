@@ -83,16 +83,20 @@ export const relationIdField = (
   return `${key}Ids`;
 };
 
+/** A oneOf/lifecycle member: lifecycle is always string, oneOf can be string or number. */
+type EnumValue = number | string;
+
 /**
  * Extracts the values array from a lifecycle or oneOf PropDef.
  * PropDef<K, V> defaults V to unknown, so switch narrowing on `kind` doesn't
- * narrow `values` to `readonly string[]`. This helper centralizes the cast.
+ * narrow `values` to `readonly EnumValue[]`. This helper centralizes the cast.
  */
-const getEnumValues = (prop: PropDef): readonly string[] =>
-  prop.values as readonly string[];
+const getEnumValues = (prop: PropDef): readonly EnumValue[] =>
+  prop.values as readonly EnumValue[];
 
-const formatUnionValues = (values: readonly string[]): string =>
-  values.map((v) => `'${v}'`).join(" | ");
+/** Format enum members as a TS union: strings get quoted, numbers stay bare. */
+export const formatUnionValues = (values: readonly EnumValue[]): string =>
+  values.map((v) => (typeof v === "number" ? String(v) : `'${v}'`)).join(" | ");
 
 /** Map a PropDef kind to its TypeScript type string. */
 export const propKindToTS = (prop: PropDef): string => {
@@ -130,10 +134,20 @@ export const propKindToTS = (prop: PropDef): string => {
   }
 };
 
-const formatZodEnum = (values: readonly string[]): string => {
-  const items = values.map((v) => `'${v}'`).join(", ");
+const formatZodEnum = (values: readonly EnumValue[]): string => {
+  // z.enum only accepts string members; an all-string enum keeps the compact form.
+  if (values.every((v) => typeof v === "string")) {
+    const items = values.map((v) => `'${v}'`).join(", ");
 
-  return `z.enum([${items}])`;
+    return `z.enum([${items}])`;
+  }
+
+  // Mixed or numeric members → literal union (z.union needs ≥2 members).
+  const literals = values.map((v) => `z.literal(${valueToSource(v)})`);
+
+  return literals.length === 1
+    ? (literals[0] as string)
+    : `z.union([${literals.join(", ")}])`;
 };
 
 /** Map a PropDef kind to its Zod validator string. */
@@ -173,7 +187,8 @@ export const getLifecycleProp = (
 
   for (const [key, prop] of Object.entries(model.props)) {
     if (prop.kind === "lifecycle") {
-      return { key, values: getEnumValues(prop) };
+      // Lifecycle states are always strings — narrow the shared EnumValue[] accessor.
+      return { key, values: getEnumValues(prop) as readonly string[] };
     }
   }
 
@@ -298,12 +313,12 @@ export const resolveGuardBody = (
     if (!prop || (prop.kind !== "lifecycle" && prop.kind !== "oneOf"))
       return undefined;
 
-    const values = prop.values as readonly string[];
+    const values = getEnumValues(prop);
 
     for (const value of values) {
       try {
         if (guard({ ...defaults, [propName]: value }) === true) {
-          return `'${value}'`;
+          return valueToSource(value);
         }
       } catch {
         /* guard may access missing props, skip */
@@ -358,9 +373,9 @@ export const defaultValueForProp = (prop: PropDef): string => {
     case "lifecycle": // fall through
 
     case "oneOf": {
-      const values = prop.values as readonly string[];
+      const values = getEnumValues(prop);
 
-      return `'${values[0]}'`;
+      return valueToSource(values[0] ?? "");
     }
 
     case "number":
@@ -418,7 +433,7 @@ export const buildModelDefaults = (
       // fall through
 
       case "oneOf":
-        defaults[key] = (prop.values as readonly string[])[0] ?? "";
+        defaults[key] = getEnumValues(prop)[0] ?? "";
         break;
 
       case "number":
@@ -468,7 +483,7 @@ export const resolvePolicyGuardBody = (
     if (!prop || (prop.kind !== "lifecycle" && prop.kind !== "oneOf"))
       return undefined;
 
-    const values = prop.values as readonly string[];
+    const values = getEnumValues(prop);
     const defaults = buildModelDefaults(model);
 
     for (const value of values) {
@@ -476,7 +491,7 @@ export const resolvePolicyGuardBody = (
         const ctx = { [reqKey]: { ...defaults, [propName]: value } };
 
         if (guard(ctx) === true) {
-          return `'${value}'`;
+          return valueToSource(value);
         }
       } catch {
         /* guard may access missing props, skip */

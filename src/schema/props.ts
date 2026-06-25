@@ -36,7 +36,10 @@ export type LifecycleProp<T extends readonly string[]> = PropDef<
   T
 >;
 export type NumberProp = PropDef<"number", null>;
-export type OneOfProp<T extends readonly string[]> = PropDef<"oneOf", T>;
+export type OneOfProp<T extends readonly (number | string)[]> = PropDef<
+  "oneOf",
+  T
+>;
 
 export type PropDef<K extends PropKind = PropKind, V = unknown> = {
   readonly kind: K;
@@ -122,7 +125,7 @@ export const optional = <P extends PropDef>(
 export const isOptional = (prop: PropDef): prop is OptionalPropDef =>
   OPTIONAL_BRAND in prop && (prop as OptionalPropDef)[OPTIONAL_BRAND];
 
-export const oneOf = <const T extends readonly string[]>(
+export const oneOf = <const T extends readonly (number | string)[]>(
   values: T,
 ): OneOfProp<T> => ({
   kind: "oneOf",

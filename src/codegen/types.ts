@@ -21,15 +21,13 @@ export const generateTypes = (model: ModelDef): string => {
   const typeName = capitalize(model.name);
   const propEntries = model.props ? Object.entries(model.props) : [];
 
-  // Generate union types for lifecycle and oneOf props
+  // Generate union types for lifecycle and oneOf props. propKindToTS already
+  // formats the union (quoting strings, leaving numbers bare for numeric oneOf).
   for (const [key, prop] of propEntries) {
     if (prop.kind === "lifecycle" || prop.kind === "oneOf") {
       const unionName = `${typeName}${capitalize(key)}`;
-      const values = (prop.values as readonly string[])
-        .map((v) => `'${v}'`)
-        .join(" | ");
 
-      lines.push(`export type ${unionName} = ${values};`);
+      lines.push(`export type ${unionName} = ${propKindToTS(prop)};`);
     }
   }
 

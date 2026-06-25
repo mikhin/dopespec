@@ -58,10 +58,11 @@ export const relationIdField = (key, kind) => {
 /**
  * Extracts the values array from a lifecycle or oneOf PropDef.
  * PropDef<K, V> defaults V to unknown, so switch narrowing on `kind` doesn't
- * narrow `values` to `readonly string[]`. This helper centralizes the cast.
+ * narrow `values` to `readonly EnumValue[]`. This helper centralizes the cast.
  */
 const getEnumValues = (prop) => prop.values;
-const formatUnionValues = (values) => values.map((v) => `'${v}'`).join(" | ");
+/** Format enum members as a TS union: strings get quoted, numbers stay bare. */
+export const formatUnionValues = (values) => values.map((v) => (typeof v === "number" ? String(v) : `'${v}'`)).join(" | ");
 /** Map a PropDef kind to its TypeScript type string. */
 export const propKindToTS = (prop) => {
     switch (prop.kind) {
@@ -90,8 +91,16 @@ export const propKindToTS = (prop) => {
     }
 };
 const formatZodEnum = (values) => {
-    const items = values.map((v) => `'${v}'`).join(", ");
-    return `z.enum([${items}])`;
+    // z.enum only accepts string members; an all-string enum keeps the compact form.
+    if (values.every((v) => typeof v === "string")) {
+        const items = values.map((v) => `'${v}'`).join(", ");
+        return `z.enum([${items}])`;
+    }
+    // Mixed or numeric members → literal union (z.union needs ≥2 members).
+    const literals = values.map((v) => `z.literal(${valueToSource(v)})`);
+    return literals.length === 1
+        ? literals[0]
+        : `z.union([${literals.join(", ")}])`;
 };
 /** Map a PropDef kind to its Zod validator string. */
 export const propKindToZod = (prop) => {
@@ -120,6 +129,7 @@ export const getLifecycleProp = (model) => {
         return null;
     for (const [key, prop] of Object.entries(model.props)) {
         if (prop.kind === "lifecycle") {
+            // Lifecycle states are always strings — narrow the shared EnumValue[] accessor.
             return { key, values: getEnumValues(prop) };
         }
     }
@@ -212,11 +222,11 @@ export const resolveGuardBody = (guard, body, model) => {
         const prop = model.props?.[propName];
         if (!prop || (prop.kind !== "lifecycle" && prop.kind !== "oneOf"))
             return undefined;
-        const values = prop.values;
+        const values = getEnumValues(prop);
         for (const value of values) {
             try {
                 if (guard({ ...defaults, [propName]: value }) === true) {
-                    return `'${value}'`;
+                    return valueToSource(value);
                 }
             }
             catch {
@@ -259,8 +269,8 @@ export const defaultValueForProp = (prop) => {
             return "new Date(0)";
         case "lifecycle": // fall through
         case "oneOf": {
-            const values = prop.values;
-            return `'${values[0]}'`;
+            const values = getEnumValues(prop);
+            return valueToSource(values[0] ?? "");
         }
         case "number":
             return "0";
@@ -304,7 +314,7 @@ export const buildModelDefaults = (model) => {
             case "lifecycle":
             // fall through
             case "oneOf":
-                defaults[key] = prop.values[0] ?? "";
+                defaults[key] = getEnumValues(prop)[0] ?? "";
                 break;
             case "number":
                 defaults[key] = 0;
@@ -341,13 +351,13 @@ export const resolvePolicyGuardBody = (guard, body, requiresModels) => {
         const prop = model.props[propName];
         if (!prop || (prop.kind !== "lifecycle" && prop.kind !== "oneOf"))
             return undefined;
-        const values = prop.values;
+        const values = getEnumValues(prop);
         const defaults = buildModelDefaults(model);
         for (const value of values) {
             try {
                 const ctx = { [reqKey]: { ...defaults, [propName]: value } };
                 if (guard(ctx) === true) {
-                    return `'${value}'`;
+                    return valueToSource(value);
                 }
             }
             catch {
