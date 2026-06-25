@@ -1066,7 +1066,10 @@ describe("generatePolicyTests — derived fixtures", () => {
       on: { action: "create", model: LimitTask },
       requires: { board: belongsTo(EmptyEnumBoard) },
       rules: [
-        { effect: "prevent", when: (ctx) => ctx.board.paymentStatus === "UNPAID" },
+        {
+          effect: "prevent",
+          when: (ctx) => ctx.board.paymentStatus === "UNPAID",
+        },
       ],
     }) as PolicyDef;
 

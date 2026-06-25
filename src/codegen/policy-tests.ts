@@ -257,7 +257,15 @@ function emitPolicyTestBlock(
 
   for (const [i, rule] of policy.rules.entries()) {
     if (i > 0) lines.push("");
-    emitRuleTest(lines, i, rule, policy, validateFn, requiresModels, modelLookup);
+    emitRuleTest(
+      lines,
+      i,
+      rule,
+      policy,
+      validateFn,
+      requiresModels,
+      modelLookup,
+    );
   }
 
   lines.push(`});`);
@@ -312,7 +320,9 @@ function emitRuleTest(
 
   lines.push(`  it('${ruleId}: ${escapedBody} → ${rule.effect}', () => {`);
   lines.push(`    const ctx = {`);
-  lines.push(`      ${onKey}: ${emitModelLiteral(onModel, assignment[onKey] ?? {})},`);
+  lines.push(
+    `      ${onKey}: ${emitModelLiteral(onModel, assignment[onKey] ?? {})},`,
+  );
 
   for (const [key, rel] of Object.entries(policy.requires)) {
     const model = requiresModels[key];
@@ -322,7 +332,9 @@ function emitRuleTest(
 
       lines.push(`      ${key}: [${emitModelLiteral(model, defaults)}],`);
     } else {
-      lines.push(`      ${key}: ${emitModelLiteral(model, assignment[key] ?? {})},`);
+      lines.push(
+        `      ${key}: ${emitModelLiteral(model, assignment[key] ?? {})},`,
+      );
     }
   }
 
@@ -350,13 +362,17 @@ function emitTestImports(
     .map((p) => `validate${capitalize(p.name)}`)
     .join(", ");
 
-  lines.push(`import { ${validatorImports} } from './${targetKey}.policies.js';`);
+  lines.push(
+    `import { ${validatorImports} } from './${targetKey}.policies.js';`,
+  );
 
   const contextImports = policies
     .map((p) => `${capitalize(p.name)}Context`)
     .join(", ");
 
-  lines.push(`import type { ${contextImports} } from './${targetKey}.policies.js';`);
+  lines.push(
+    `import type { ${contextImports} } from './${targetKey}.policies.js';`,
+  );
 
   lines.push("");
 }
@@ -428,7 +444,10 @@ function findSatisfyingAssignment(
 
   for (let iter = 0; iter < total; iter++) {
     if (guardFires(rule, buildProbeCtx(ctxModels, slots, indices))) {
-      return { assignment: collectAssignment(ctxModels, slots, indices), kind: "found" };
+      return {
+        assignment: collectAssignment(ctxModels, slots, indices),
+        kind: "found",
+      };
     }
 
     // Odometer: increment the last slot fastest so the target model (first
