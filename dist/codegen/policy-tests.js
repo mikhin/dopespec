@@ -258,7 +258,10 @@ function findSatisfyingAssignment(rule, rawBody, onKey, onModel, policy, require
     const indices = new Array(slots.length).fill(0);
     for (let iter = 0; iter < total; iter++) {
         if (guardFires(rule, buildProbeCtx(ctxModels, slots, indices))) {
-            return { assignment: collectAssignment(ctxModels, slots, indices), kind: "found" };
+            return {
+                assignment: collectAssignment(ctxModels, slots, indices),
+                kind: "found",
+            };
         }
         // Odometer: increment the last slot fastest so the target model (first
         // slots) stays at defaults until the requires are exhausted.
