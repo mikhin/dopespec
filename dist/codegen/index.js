@@ -4,6 +4,7 @@ export { generateDecisionTable } from "./decisions-table.js";
 export { generateDecisionTests } from "./decisions-tests.js";
 export { generateE2EStubs } from "./e2e-stubs.js";
 export { generateEvents } from "./events.js";
+export { generateFeatureMap } from "./feature-map.js";
 export { generateInvariants } from "./invariants.js";
 export { generateMermaid } from "./mermaid.js";
 export { generateOrchestrators } from "./orchestrators.js";

@@ -15,6 +15,8 @@ export function model(name, config) {
         ? cfg.constraints({ rule: createTypedRule() })
         : undefined;
     const result = { kind: "model", name: trimmed };
+    if (cfg.area !== undefined)
+        result["area"] = cfg.area;
     if (cfg.props !== undefined)
         result["props"] = cfg.props;
     if (cfg.actions !== undefined)

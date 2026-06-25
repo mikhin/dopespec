@@ -31,7 +31,7 @@ export type ModelDef<
   IfProvided<"props", P> &
   IfProvided<"relations", R> &
   IfProvided<"transitions", StripTransitionMethods<T>> &
-  ModelRef & { readonly name: Name };
+  ModelRef & { readonly area?: string; readonly name: Name };
 
 /**
  * Extracts the state union from lifecycle() props only (not oneOf).
@@ -129,6 +129,8 @@ export function model<
   name: Name,
   config: {
     readonly actions?: A;
+    /** Optional grouping label for `dopespec map` (falls back to folder). */
+    readonly area?: string;
     readonly constraints?: (
       helpers: ConstraintHelpers<InferContext<P>, Extract<keyof A, string>>,
     ) => C;
@@ -149,6 +151,7 @@ export function model(name: string, config: Record<string, unknown>) {
 
   const cfg = config as {
     actions?: Record<string, ActionDef>;
+    area?: string;
     constraints?: (helpers: {
       rule: ReturnType<typeof createTypedRule>;
     }) => Record<string, ConstraintDefBase>;
@@ -169,6 +172,7 @@ export function model(name: string, config: Record<string, unknown>) {
 
   const result: Record<string, unknown> = { kind: "model", name: trimmed };
 
+  if (cfg.area !== undefined) result["area"] = cfg.area;
   if (cfg.props !== undefined) result["props"] = cfg.props;
   if (cfg.actions !== undefined) result["actions"] = cfg.actions;
   if (cfg.relations !== undefined) result["relations"] = cfg.relations;

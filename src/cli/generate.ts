@@ -433,5 +433,3 @@ function writeSrcFiles(
 
   return { skipped, written };
 }
-
-await main();

@@ -7,6 +7,7 @@ export type DecisionDef<
   I extends Record<string, PropDef> = Record<string, PropDef>,
   O extends Record<string, PropDef> = Record<string, PropDef>,
 > = {
+  readonly area?: string;
   readonly inputs: I;
   readonly kind: "decision";
   readonly name: Name;
@@ -91,6 +92,8 @@ export function decisions<
 >(
   name: Name,
   config: {
+    /** Optional grouping label for `dopespec map` (falls back to folder). */
+    readonly area?: string;
     readonly inputs: I;
     readonly outputs: O;
     readonly rules: readonly DecisionRule<I, O>[];
@@ -104,6 +107,7 @@ export function decisions(name: string, config: Record<string, unknown>) {
   if (!trimmed) throw new Error("decisions() requires a non-empty name");
 
   const cfg = config as {
+    area?: string;
     inputs: Record<string, PropDef>;
     outputs: Record<string, PropDef>;
     rules: readonly {
@@ -132,11 +136,15 @@ export function decisions(name: string, config: Record<string, unknown>) {
     validateRuleThen(rule, i, outputKeys);
   }
 
-  return {
+  const result: Record<string, unknown> = {
     inputs: cfg.inputs,
-    kind: "decision" as const,
+    kind: "decision",
     name: trimmed,
     outputs: cfg.outputs,
     rules: cfg.rules,
   };
+
+  if (cfg.area !== undefined) result["area"] = cfg.area;
+
+  return result;
 }

@@ -1,6 +1,7 @@
 import type { RelationDef } from "./relations.js";
 import type { ModelRef } from "./types.js";
 export type PolicyDef<Name extends string = string> = {
+    readonly area?: string;
     readonly kind: "policy";
     readonly name: Name;
     readonly on: {
@@ -15,6 +16,8 @@ export type PolicyRule = {
     readonly when: (ctx: any) => boolean;
 };
 export declare function policy<const Name extends string>(name: Name, config: {
+    /** Optional grouping label for `dopespec map` (falls back to folder). */
+    readonly area?: string;
     readonly on: {
         readonly action: string;
         readonly model: ModelRef;

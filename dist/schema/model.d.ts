@@ -8,6 +8,7 @@ export type ConstraintHelpers<Ctx, ActionKeys extends string> = {
     rule: () => ConstraintBuilder<Ctx, ActionKeys>;
 };
 export type ModelDef<Name extends string = string, P extends Record<string, PropDef> = Record<string, PropDef>, A extends Record<string, ActionDef> = Record<string, ActionDef>, R extends Record<string, RelationDef> = Record<string, RelationDef>, T extends Record<string, TransitionDefBase> = Record<string, TransitionDefBase>, C extends Record<string, ConstraintDefBase> = Record<string, ConstraintDefBase>> = IfProvided<"actions", A> & IfProvided<"constraints", StripConstraintMethods<C>> & IfProvided<"props", P> & IfProvided<"relations", R> & IfProvided<"transitions", StripTransitionMethods<T>> & ModelRef & {
+    readonly area?: string;
     readonly name: Name;
 };
 /**
@@ -56,6 +57,8 @@ type TransitionDefBase = {
 type UnionToIntersection<U> = (U extends unknown ? (k: U) => void : never) extends (k: infer I) => void ? I : never;
 export declare function model<const Name extends string, const P extends Record<string, PropDef> = Record<string, never>, const A extends Record<string, ActionDef> = Record<string, never>, const R extends Record<string, RelationDef> = Record<string, never>, T extends Record<string, TransitionDefBase> = Record<string, never>, C extends Record<string, ConstraintDefBase> = Record<string, never>>(name: Name, config: {
     readonly actions?: A;
+    /** Optional grouping label for `dopespec map` (falls back to folder). */
+    readonly area?: string;
     readonly constraints?: (helpers: ConstraintHelpers<InferContext<P>, Extract<keyof A, string>>) => C;
     readonly props?: P;
     readonly relations?: R;

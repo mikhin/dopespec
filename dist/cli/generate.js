@@ -246,5 +246,4 @@ function writeSrcFiles(name, def, srcPath, policyActions) {
     }
     return { skipped, written };
 }
-await main();
 //# sourceMappingURL=generate.js.map
