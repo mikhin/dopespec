@@ -324,7 +324,7 @@ function emitRuleTest(
   const assignment = search.assignment;
 
   lines.push(`  it('${ruleId}: ${escapedBody} → ${rule.effect}', () => {`);
-  lines.push(`    const ctx = {`);
+  lines.push(`    const ctx: ${capitalize(policy.name)}Context = {`);
   lines.push(
     `      ${onKey}: ${emitModelLiteral(onModel, assignment[onKey] ?? {})},`,
   );
