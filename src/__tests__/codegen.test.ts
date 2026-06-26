@@ -1091,6 +1091,71 @@ describe("generatePolicyTests", () => {
   it("returns empty string for empty policies", () => {
     expect(generatePolicyTests("order", [], policyModelLookup)).toBe("");
   });
+
+  it("annotates the fixture ctx with the policy Context type", () => {
+    const output = generatePolicyTests(
+      "order",
+      [petStorePolicy],
+      policyModelLookup,
+    );
+
+    expect(output).toContain("const ctx: NoSuspendedCustomerOrdersContext = {");
+  });
+
+  // Compiles the validator + generated tests together under strict tsc with
+  // noUnusedLocals. Proves the ctx annotation type-checks against the generated
+  // Context, and guards the regression where the Context import was emitted but
+  // never used (noUnusedLocals would flag it as an error).
+  it("generated policy validator + tests compile under strict tsc", () => {
+    const dir = mkdtempSync(join(tmpdir(), "dopespec-policy-tsc-"));
+
+    try {
+      writeFileSync(join(dir, "package.json"), '{"type":"module"}');
+      writeFileSync(
+        join(dir, "order.types.ts"),
+        generateTypes(Order as ModelDef),
+      );
+      writeFileSync(
+        join(dir, "customer.types.ts"),
+        generateTypes(Customer as ModelDef),
+      );
+      writeFileSync(
+        join(dir, "order.policies.ts"),
+        generatePolicyValidator([petStorePolicy], policyModelLookup),
+      );
+      writeFileSync(
+        join(dir, "order.policy.test.ts"),
+        generatePolicyTests("order", [petStorePolicy], policyModelLookup),
+      );
+
+      const tsFiles = [
+        "order.types.ts",
+        "customer.types.ts",
+        "order.policies.ts",
+        "order.policy.test.ts",
+      ].map((f) => join(dir, f));
+
+      const program = ts.createProgram(tsFiles, {
+        module: ts.ModuleKind.NodeNext,
+        moduleResolution: ts.ModuleResolutionKind.NodeNext,
+        noUnusedLocals: true,
+        skipLibCheck: true,
+        strict: true,
+        target: ts.ScriptTarget.ES2022,
+      });
+
+      const errors = ts
+        .getPreEmitDiagnostics(program)
+        .filter((d) => d.category === ts.DiagnosticCategory.Error)
+        .map((d) => ts.flattenDiagnosticMessageText(d.messageText, "\n"))
+        // vitest isn't installed in the temp dir — that import is expected to fail.
+        .filter((msg) => !msg.includes("Cannot find module 'vitest'"));
+
+      expect(errors).toEqual([]);
+    } finally {
+      rmSync(dir, { force: true, recursive: true });
+    }
+  });
 });
 
 // Regression: a guard combining an enum check with a numeric threshold must

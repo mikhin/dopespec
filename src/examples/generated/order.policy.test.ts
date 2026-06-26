@@ -4,7 +4,7 @@ import type { NoSuspendedCustomerOrdersContext } from './order.policies.js';
 
 describe('NoSuspendedCustomerOrders', () => {
   it('NoSuspendedCustomerOrders:rule_0: ctx.customer.status === \'suspended\' → prevent', () => {
-    const ctx = {
+    const ctx: NoSuspendedCustomerOrdersContext = {
       order: { createdAt: new Date(0), status: 'pending', total: 0, customerId: '', itemIds: [] },
       customer: { email: '', name: '', status: 'suspended' },
     };
@@ -14,7 +14,7 @@ describe('NoSuspendedCustomerOrders', () => {
   });
 
   it('NoSuspendedCustomerOrders:rule_1: ctx.customer.status === \'deleted\' → warn', () => {
-    const ctx = {
+    const ctx: NoSuspendedCustomerOrdersContext = {
       order: { createdAt: new Date(0), status: 'pending', total: 0, customerId: '', itemIds: [] },
       customer: { email: '', name: '', status: 'deleted' },
     };

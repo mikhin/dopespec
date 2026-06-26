@@ -176,7 +176,7 @@ function emitRuleTest(lines, index, rule, policy, validateFn, requiresModels, mo
     }
     const assignment = search.assignment;
     lines.push(`  it('${ruleId}: ${escapedBody} → ${rule.effect}', () => {`);
-    lines.push(`    const ctx = {`);
+    lines.push(`    const ctx: ${capitalize(policy.name)}Context = {`);
     lines.push(`      ${onKey}: ${emitModelLiteral(onModel, assignment[onKey] ?? {})},`);
     for (const [key, rel] of Object.entries(policy.requires)) {
         const model = requiresModels[key];
