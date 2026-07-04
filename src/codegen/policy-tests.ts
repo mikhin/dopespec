@@ -262,7 +262,9 @@ function emitExampleCtx(
 
       parts.push(`${key}: [${elems.join(", ")}]`);
     } else {
-      parts.push(`${key}: ${emitMergedModelLiteral(model, value, modelLookup)}`);
+      parts.push(
+        `${key}: ${emitMergedModelLiteral(model, value, modelLookup)}`,
+      );
     }
   }
 

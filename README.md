@@ -123,7 +123,9 @@ const FreeTierLimit = policy("FreeTierLimit", {
       // defaults to produce a type-complete fixture.
       example: {
         billing: { paymentStatus: "UNPAID" },
-        project: { phases: [{ items: Array.from({ length: 10 }, () => ({})) }] },
+        project: {
+          phases: [{ items: Array.from({ length: 10 }, () => ({})) }],
+        },
       },
       when: (ctx) =>
         ctx.billing.paymentStatus === "UNPAID" &&
