@@ -51,6 +51,20 @@ function validateRules(rules) {
             throw new Error(`policy() rules[${String(i)}].when must be a function`);
         if (!VALID_EFFECTS.has(rule.effect))
             throw new Error(`policy() rules[${String(i)}].effect must be "prevent" or "warn"`);
+        // A provided example must actually fire the guard — catch a stale/wrong
+        // fixture at definition time rather than emitting a guaranteed-red test.
+        if (rule.example !== undefined) {
+            const guard = rule.when;
+            let fires;
+            try {
+                fires = guard(rule.example) === true;
+            }
+            catch (error) {
+                throw new Error(`policy() rules[${String(i)}].example threw when evaluated against the guard`, { cause: error });
+            }
+            if (!fires)
+                throw new Error(`policy() rules[${String(i)}].example does not satisfy the guard (when(example) must return true)`);
+        }
     }
 }
 //# sourceMappingURL=policy.js.map

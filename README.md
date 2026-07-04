@@ -19,6 +19,14 @@ const Order = model("Order", {
     total: number(),
     status: lifecycle(states),
   },
+  actions: {
+    addItem: action<{ productId: string }>({ productId: string() }),
+  },
+  constraints: ({ rule }) => ({
+    cannotAddWhenCancelled: rule()
+      .when((ctx) => ctx.status === states.cancelled)
+      .prevent("addItem"),
+  }),
   transitions: ({ from }) => ({
     pay: from(states.pending)
       .to(states.paid)
@@ -37,7 +45,13 @@ Prop types: `string()`, `number()`, `boolean()`, `date()`, `oneOf([...])` (strin
 
 Relations: `belongsTo(M)` / `hasMany(M)` generate normalized id refs (`xId` / `xIds`); `embeds(M)` nests the child's props inline as an array (`key: ChildProps[]`) for denormalized aggregates / tree structures.
 
+Actions: `actions: { name: action<Payload>({ field: prop, … }) }` declares the commands a model accepts. Each becomes a generated command type (`ModelNameCommand` union) and a dispatch case in the orchestrator skeleton. Payloads reference the same prop builders as props.
+
 Action payloads: a literal string- or numeric-union field accepts a matching `oneOf([...])` so the union survives into the generated command type instead of widening to `string` / `number` — `action<{ direction: "left" | "right" }>({ direction: oneOf(["left", "right"]) })` generates `payload: { direction: 'left' | 'right' }`. The scalar (`string()` / `number()`) stays valid for such fields too.
+
+Constraints (invariants): `constraints: ({ rule }) => ({ name: rule().when((ctx) => …).prevent("actionName") })` block an action while a predicate over the model's props holds. Each generates a validator in `*.invariants.ts` that the orchestrator checks before applying the guarded action. Guards are pure functions of the model's props.
+
+Forward references: use `ref('ModelName')` anywhere a model reference is expected (`embeds(ref('Child'))`, `on: { model: ref('Order') }`) to point at a model defined later or in another file — it resolves by name at generate time, avoiding import-order cycles.
 
 ### `decisions()` — pure decision table
 
@@ -88,7 +102,39 @@ const NoSuspendedCustomerOrders = policy("NoSuspendedCustomerOrders", {
 });
 ```
 
+Each rule's `effect` shapes the validator result: `"prevent"` adds the rule id to `result.violations` and sets `result.valid = false` (the orchestrator blocks the action); `"warn"` adds it to `result.warnings` and leaves `valid` true (advisory — surface it, but the action proceeds).
+
 Generates: policy validator, integration tests, policy index, Mermaid interaction diagram.
+
+The integration tests auto-derive a firing fixture from the guard body (an enum/boolean
+value, or a number/string literal in the guard). When it can't — typically a guard over a
+collection's length or contents (`ctx.items.length >= 10`) — the rule emits an `it.todo`
+rather than a guaranteed-red test. Supply an **`example`** to turn that into a real test:
+
+```typescript
+const FreeTierLimit = policy("FreeTierLimit", {
+  on: { model: Project, action: "addItem" },
+  requires: { billing: belongsTo(Billing) },
+  rules: [
+    {
+      effect: "prevent",
+      // A ctx that makes the guard fire. May be PARTIAL — only the fields the guard
+      // reads — the generator fills the rest (incl. embedded children) from model
+      // defaults to produce a type-complete fixture.
+      example: {
+        billing: { paymentStatus: "UNPAID" },
+        project: { phases: [{ items: Array.from({ length: 10 }, () => ({})) }] },
+      },
+      when: (ctx) =>
+        ctx.billing.paymentStatus === "UNPAID" &&
+        ctx.project.phases.reduce((n, p) => n + p.items.length, 0) >= 10,
+    },
+  ],
+});
+```
+
+The `example` is validated at definition time — `when(example)` must return `true`, or
+`policy()` throws — so a stale fixture fails fast instead of generating a broken test.
 
 ## Quick Start
 
@@ -121,28 +167,38 @@ export const Order = model("Order", {
 Generate:
 
 ```bash
-npx dopespec generate schema/order.ts
+npx dopespec generate schema/order.ts                 # → ./generated + ./src
+npx dopespec generate schema/order.ts --outdir spec   # → spec/generated + spec/src
 ```
 
-Output:
+Output (a `model()` named `Order`, a `decisions()` table, a `policy()` on `Order`):
 
 ```
 generated/
-  order.types.ts          types + props interface
-  order.transitions.ts    transition functions with guards
-  order.events.ts         domain event types
-  order.commands.ts       command types
-  order.invariants.ts     constraint validators
-  order.test.ts           unit tests (BDD)
-  order.zod.ts            Zod validation schema
-  order.mermaid.md        state diagram
+  # model() —
+  order.types.ts            types + props interface
+  order.transitions.ts      transition functions with guards
+  order.events.ts           domain event types
+  order.commands.ts         command types
+  order.invariants.ts       constraint validators
+  order.test.ts             unit tests (BDD)
+  order.zod.ts              Zod validation schema
+  order.mermaid.md          state diagram
+  # decisions() —
+  credit-tier.evaluate.ts   evaluate function
+  credit-tier.test.ts       unit tests (one per rule)
+  credit-tier.table.md      markdown decision table
+  # policy() (grouped by target model) —
+  order.policies.ts         policy validators + Context types
+  order.policy.test.ts      integration tests (auto fixture or rule `example`)
+  order.policy-mermaid.md   interaction diagram
 
 src/
-  order.orchestrators.ts  handler skeletons (generated once, you fill TODOs)
-  order.e2e.ts            e2e test stubs (generated once)
+  order.orchestrators.ts    handler skeletons (generated once, you fill TODOs)
+  order.e2e.ts              e2e test stubs (generated once)
 ```
 
-`generated/` is always overwritten. `src/` is never overwritten — your code stays safe.
+`generated/` is always overwritten. `src/` is never overwritten — your code stays safe. `--outdir <dir>` nests both under `<dir>/` (e.g. `spec/generated` + `spec/src`).
 
 ## Feature map
 

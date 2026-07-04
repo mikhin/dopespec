@@ -12,6 +12,14 @@ export type PolicyDef<Name extends string = string> = {
 
 export type PolicyRule = {
   readonly effect: "prevent" | "warn";
+  /**
+   * Optional satisfying context — a ctx that makes `when` return true. Supplied
+   * when the generator's automatic fixture search cannot construct one (e.g. a
+   * guard over embedded-collection length/contents). Used to emit a REAL policy
+   * test instead of an `it.todo`. Validated at definition time: it must satisfy
+   * the guard.
+   */
+  readonly example?: Record<string, unknown>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- strict TS noPropertyAccessFromIndexSignature blocks dot-access on Record types; any is required for readable guards like ctx.customer.status
   readonly when: (ctx: any) => boolean;
 };
@@ -40,7 +48,11 @@ export function policy(name: string, config: Record<string, unknown>) {
     area?: string;
     on: { action: string; model: ModelRef };
     requires: Record<string, RelationDef>;
-    rules: readonly { effect: string; when: unknown }[];
+    rules: readonly {
+      effect: string;
+      example?: Record<string, unknown>;
+      when: unknown;
+    }[];
   };
 
   const action = validateOn(cfg.on);
@@ -103,7 +115,13 @@ function validateRequires(
 }
 
 function validateRules(
-  rules: readonly { effect: string; when: unknown }[] | undefined,
+  rules:
+    | readonly {
+        effect: string;
+        example?: Record<string, unknown>;
+        when: unknown;
+      }[]
+    | undefined,
 ): void {
   if (!rules || rules.length === 0)
     throw new Error("policy() requires at least one rule");
@@ -115,5 +133,26 @@ function validateRules(
       throw new Error(
         `policy() rules[${String(i)}].effect must be "prevent" or "warn"`,
       );
+
+    // A provided example must actually fire the guard — catch a stale/wrong
+    // fixture at definition time rather than emitting a guaranteed-red test.
+    if (rule.example !== undefined) {
+      const guard = rule.when as (ctx: unknown) => unknown;
+      let fires: boolean;
+
+      try {
+        fires = guard(rule.example) === true;
+      } catch (error) {
+        throw new Error(
+          `policy() rules[${String(i)}].example threw when evaluated against the guard`,
+          { cause: error },
+        );
+      }
+
+      if (!fires)
+        throw new Error(
+          `policy() rules[${String(i)}].example does not satisfy the guard (when(example) must return true)`,
+        );
+    }
   }
 }

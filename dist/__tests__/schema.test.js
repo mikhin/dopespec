@@ -729,6 +729,33 @@ describe("policy", () => {
         });
         expect(p.name).toBe("Spaced");
     });
+    it("accepts and stores a rule example that satisfies the guard", () => {
+        const p = policy("LimitItems", {
+            on: { action: "addItem", model: targetModel },
+            requires: { items: hasMany(relatedModel) },
+            rules: [
+                {
+                    effect: "prevent",
+                    example: { items: Array.from({ length: 11 }, () => ({})) },
+                    when: (ctx) => ctx.items.length > 10,
+                },
+            ],
+        });
+        expect(p.rules[0]?.example).toBeDefined();
+    });
+    it("throws when a rule example does not satisfy the guard", () => {
+        expect(() => policy("LimitItems", {
+            on: { action: "addItem", model: targetModel },
+            requires: { items: hasMany(relatedModel) },
+            rules: [
+                {
+                    effect: "prevent",
+                    example: { items: [] },
+                    when: (ctx) => ctx.items.length > 10,
+                },
+            ],
+        })).toThrow(/example does not satisfy the guard/);
+    });
     it("throws on empty name", () => {
         expect(() => policy("", {
             on: { action: "addItem", model: targetModel },

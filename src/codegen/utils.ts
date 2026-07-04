@@ -353,10 +353,29 @@ export const valueToSource = (value: unknown): string => {
     return `'${value.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
   if (typeof value === "number" || typeof value === "boolean")
     return String(value);
+  if (value === null) return "null";
+  if (value === undefined) return "undefined";
   if (value instanceof Date) return `new Date('${value.toISOString()}')`;
+  // Recurse into arrays/plain objects so nested fixtures (e.g. a policy example
+  // with embedded children carrying Date props) serialize to valid TS source —
+  // JSON.stringify would flatten Dates to strings and break the ctx type.
+  if (Array.isArray(value))
+    return `[${value.map((item) => valueToSource(item)).join(", ")}]`;
+
+  if (typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>).map(
+      ([key, val]) => `${quoteKeyIfNeeded(key)}: ${valueToSource(val)}`,
+    );
+
+    return `{ ${entries.join(", ")} }`;
+  }
 
   return JSON.stringify(value);
 };
+
+/** Object keys that aren't plain identifiers get quoted for valid source. */
+const quoteKeyIfNeeded = (key: string): string =>
+  /^[A-Za-z_$][\w$]*$/.test(key) ? key : `'${key.replace(/'/g, "\\'")}'`;
 
 /** Return a sensible default value (as source code) for a PropDef kind. */
 export const defaultValueForProp = (prop: PropDef): string => {

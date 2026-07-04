@@ -6,6 +6,7 @@ import {
   buildModelDefaults,
   capitalize,
   defaultValueForProp,
+  getRelations,
   guardToSource,
   relationIdField,
   resolvePolicyGuardBody,
@@ -27,16 +28,26 @@ export const generatePolicyTests = (
 ): string => {
   if (policies.length === 0) return "";
 
-  const lines: string[] = [];
   const targetKey = toKebabCase(targetModelName);
 
-  emitTestImports(lines, targetKey, policies);
+  // Emit the test blocks first, tracking which policies produced at least one
+  // REAL test (auto-found fixture or a rule `example`). Imports are then emitted
+  // only for those — a file of pure `it.todo`s needs neither the validators nor
+  // `expect`, so this keeps the output lint-clean.
+  const bodyLines: string[] = [];
+  const policiesWithRealTest: PolicyDef[] = [];
 
   for (const policy of policies) {
-    emitPolicyTestBlock(lines, policy, modelLookup);
+    const hadRealTest = emitPolicyTestBlock(bodyLines, policy, modelLookup);
+
+    if (hadRealTest) policiesWithRealTest.push(policy);
   }
 
-  return lines.join("\n");
+  const headerLines: string[] = [];
+
+  emitTestImports(headerLines, targetKey, policiesWithRealTest);
+
+  return [...headerLines, ...bodyLines].join("\n");
 };
 
 type CtxModel = {
@@ -205,6 +216,130 @@ function dedupe<T>(values: readonly T[]): T[] {
   return [...new Set(values)];
 }
 
+/** The shared `const result = …; expect(…)` tail for a real policy test. */
+function emitAssertionTail(
+  lines: string[],
+  validateFn: string,
+  rule: PolicyRule,
+  ruleId: string,
+): void {
+  lines.push(`    const result = ${validateFn}(ctx);`);
+
+  if (rule.effect === "prevent") {
+    lines.push(`    expect(result.valid).toBe(false);`);
+    lines.push(`    expect(result.violations).toContain('${ruleId}');`);
+  } else {
+    lines.push(`    expect(result.warnings).toContain('${ruleId}');`);
+  }
+}
+
+/**
+ * Build the ctx literal for a rule `example`. The example may be PARTIAL — only the
+ * fields the guard reads — so each ctx key is merged over its model's defaults (see
+ * emitMergedModelLiteral) to produce a type-complete literal.
+ */
+function emitExampleCtx(
+  example: Record<string, unknown>,
+  onKey: string,
+  onModel: ModelDef | undefined,
+  policy: PolicyDef,
+  requiresModels: Record<string, ModelDef>,
+  modelLookup: Map<string, ModelDef>,
+): string {
+  const parts: string[] = [
+    `${onKey}: ${emitMergedModelLiteral(onModel, example[onKey], modelLookup)}`,
+  ];
+
+  for (const [key, rel] of Object.entries(policy.requires)) {
+    const model = requiresModels[key];
+    const value = example[key];
+
+    if (rel.kind === "hasMany") {
+      const arr = Array.isArray(value) ? value : [];
+      const elems = arr.map((el) =>
+        emitMergedModelLiteral(model, el, modelLookup),
+      );
+
+      parts.push(`${key}: [${elems.join(", ")}]`);
+    } else {
+      parts.push(`${key}: ${emitMergedModelLiteral(model, value, modelLookup)}`);
+    }
+  }
+
+  return `{ ${parts.join(", ")} }`;
+}
+
+/**
+ * Emit a full model literal by merging a (possibly partial) example value over the
+ * model's props/relations. Author-supplied fields win; omitted ones fall back to
+ * defaults, and embedded child collections recurse. This lets a rule `example` name
+ * only the guard-relevant fields yet still produce a type-complete literal.
+ */
+function emitMergedModelLiteral(
+  model: ModelDef | undefined,
+  partial: unknown,
+  modelLookup: Map<string, ModelDef>,
+): string {
+  if (!model?.props) {
+    return partial === undefined ? "{}" : valueToSource(partial);
+  }
+
+  const provided =
+    partial && typeof partial === "object" && !Array.isArray(partial)
+      ? (partial as Record<string, unknown>)
+      : {};
+
+  const entries = [
+    ...emitMergedProps(model, provided),
+    ...emitMergedRelations(model, provided, modelLookup),
+  ];
+
+  return `{ ${entries.join(", ")} }`;
+}
+
+/** Prop entries for a merged literal: author value if present, else the default. */
+function emitMergedProps(
+  model: ModelDef,
+  provided: Record<string, unknown>,
+): string[] {
+  return Object.entries(model.props ?? {})
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(
+      ([key, prop]) =>
+        `${key}: ${key in provided ? valueToSource(provided[key]) : defaultValueForProp(prop)}`,
+    );
+}
+
+/** Relation entries for a merged literal: embeds recurse, id fields default. */
+function emitMergedRelations(
+  model: ModelDef,
+  provided: Record<string, unknown>,
+  modelLookup: Map<string, ModelDef>,
+): string[] {
+  return getRelations(model)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, rel]) => {
+      if (rel.kind === "embeds") {
+        const childModel = modelLookup.get(rel.target.name);
+        const arr = Array.isArray(provided[key])
+          ? (provided[key] as unknown[])
+          : [];
+        const elems = arr.map((el) =>
+          emitMergedModelLiteral(childModel, el, modelLookup),
+        );
+
+        return `${key}: [${elems.join(", ")}]`;
+      }
+
+      const field = relationIdField(key, rel.kind);
+
+      if (field in provided)
+        return `${field}: ${valueToSource(provided[field])}`;
+
+      return rel.kind === "belongsTo" ? `${field}: ''` : `${field}: []`;
+    });
+}
+
 /**
  * Emit an object-literal fixture for a model from a value map. Props equal to
  * their default render via defaultValueForProp (stable formatting, e.g.
@@ -249,20 +384,23 @@ function emitModelLiteral(
   return `{ ${entries.join(", ")} }`;
 }
 
+/** Returns true when at least one rule produced a real (non-todo) test. */
 function emitPolicyTestBlock(
   lines: string[],
   policy: PolicyDef,
   modelLookup: Map<string, ModelDef>,
-): void {
+): boolean {
   const policyName = capitalize(policy.name);
   const validateFn = `validate${policyName}`;
   const requiresModels = resolveRequiresModels(policy, modelLookup);
 
   lines.push(`describe('${policy.name}', () => {`);
 
+  let anyReal = false;
+
   for (const [i, rule] of policy.rules.entries()) {
     if (i > 0) lines.push("");
-    emitRuleTest(
+    const isReal = emitRuleTest(
       lines,
       i,
       rule,
@@ -271,12 +409,17 @@ function emitPolicyTestBlock(
       requiresModels,
       modelLookup,
     );
+
+    anyReal = anyReal || isReal;
   }
 
   lines.push(`});`);
   lines.push("");
+
+  return anyReal;
 }
 
+/** Returns true when a real (non-todo) test was emitted for this rule. */
 function emitRuleTest(
   lines: string[],
   index: number,
@@ -285,7 +428,7 @@ function emitRuleTest(
   validateFn: string,
   requiresModels: Record<string, ModelDef>,
   modelLookup: Map<string, ModelDef>,
-): void {
+): boolean {
   const rawBody = guardToSource(
     rule.when as (ctx: Record<string, unknown>) => unknown,
   );
@@ -293,6 +436,7 @@ function emitRuleTest(
   const ruleId = `${policy.name}:rule_${String(index)}`;
   // Guard body in test description for readability; stable ID in assertion.
   const escapedBody = guardBody.replace(/'/g, "\\'");
+  const title = `${ruleId}: ${escapedBody} → ${rule.effect}`;
 
   const onModel = modelLookup.get(policy.on.model.name);
   const onKey = policy.on.model.name.toLowerCase();
@@ -305,25 +449,37 @@ function emitRuleTest(
     requiresModels,
   );
 
-  // No firing fixture — emit a todo rather than a guaranteed-red test, and say
-  // why: genuinely unsatisfiable (e.g. a hasMany-length guard) vs. a search
-  // space larger than the cap (which may yet be satisfiable).
   if (search.kind !== "found") {
+    // An author-provided example rescues guards the auto-search can't satisfy
+    // (e.g. a guard over embedded-collection length). It was already validated
+    // to fire the guard at definition time, so emit a real test from it.
+    if (rule.example) {
+      lines.push(`  it('${title}', () => {`);
+      lines.push(
+        `    const ctx: ${capitalize(policy.name)}Context = ${emitExampleCtx(rule.example, onKey, onModel, policy, requiresModels, modelLookup)};`,
+      );
+      emitAssertionTail(lines, validateFn, rule, ruleId);
+      lines.push(`  });`);
+
+      return true;
+    }
+
+    // No fixture — emit a todo rather than a guaranteed-red test, and say why:
+    // genuinely unsatisfiable (e.g. a hasMany-length guard, add an `example`) vs.
+    // a search space larger than the cap (which may yet be satisfiable).
     const reason =
       search.kind === "capped"
         ? `search space ${String(search.total)} exceeds cap of ${String(MAX_COMBINATIONS)}`
-        : "no fixture satisfies the guard";
+        : "no fixture satisfies the guard — add an `example` to the rule";
 
-    lines.push(
-      `  it.todo('${ruleId}: ${escapedBody} → ${rule.effect} (${reason})');`,
-    );
+    lines.push(`  it.todo('${title} (${reason})');`);
 
-    return;
+    return false;
   }
 
   const assignment = search.assignment;
 
-  lines.push(`  it('${ruleId}: ${escapedBody} → ${rule.effect}', () => {`);
+  lines.push(`  it('${title}', () => {`);
   lines.push(`    const ctx: ${capitalize(policy.name)}Context = {`);
   lines.push(
     `      ${onKey}: ${emitModelLiteral(onModel, assignment[onKey] ?? {})},`,
@@ -344,26 +500,32 @@ function emitRuleTest(
   }
 
   lines.push(`    };`);
-  lines.push(`    const result = ${validateFn}(ctx);`);
-
-  if (rule.effect === "prevent") {
-    lines.push(`    expect(result.valid).toBe(false);`);
-    lines.push(`    expect(result.violations).toContain('${ruleId}');`);
-  } else {
-    lines.push(`    expect(result.warnings).toContain('${ruleId}');`);
-  }
-
+  emitAssertionTail(lines, validateFn, rule, ruleId);
   lines.push(`  });`);
+
+  return true;
 }
 
+/**
+ * `policiesWithRealTest` are those that emitted at least one non-todo test. Only
+ * they need `expect` and the validator / Context imports — a file of pure todos
+ * imports just `describe, it`, so nothing dangles (keeps the output lint-clean).
+ */
 function emitTestImports(
   lines: string[],
   targetKey: string,
-  policies: PolicyDef[],
+  policiesWithRealTest: PolicyDef[],
 ): void {
+  if (policiesWithRealTest.length === 0) {
+    lines.push(`import { describe, it } from 'vitest';`);
+    lines.push("");
+
+    return;
+  }
+
   lines.push(`import { describe, it, expect } from 'vitest';`);
 
-  const validatorImports = policies
+  const validatorImports = policiesWithRealTest
     .map((p) => `validate${capitalize(p.name)}`)
     .join(", ");
 
@@ -371,7 +533,7 @@ function emitTestImports(
     `import { ${validatorImports} } from './${targetKey}.policies.js';`,
   );
 
-  const contextImports = policies
+  const contextImports = policiesWithRealTest
     .map((p) => `${capitalize(p.name)}Context`)
     .join(", ");
 

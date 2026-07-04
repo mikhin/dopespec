@@ -843,6 +843,67 @@ describe("generatePolicyTests — derived fixtures", () => {
         expect(output).toContain("it.todo('CollectionLength:rule_0");
         expect(output).toContain("no fixture satisfies the guard");
     });
+    it("uses a rule `example` to emit a real test when the search cannot derive one", () => {
+        const CollectionLength = policy("CollectionLength", {
+            on: { action: "create", model: LimitTask },
+            requires: { boards: hasMany(LimitBoard) },
+            rules: [
+                {
+                    effect: "prevent",
+                    example: {
+                        boards: [
+                            { paymentStatus: "UNPAID", taskCount: 0 },
+                            { paymentStatus: "UNPAID", taskCount: 0 },
+                        ],
+                    },
+                    when: (ctx) => ctx.boards.length > 1,
+                },
+            ],
+        });
+        const output = generatePolicyTests("limit-task", [CollectionLength], thresholdLookup);
+        // The example rescues an otherwise non-derivable (hasMany-length) guard.
+        expect(output).toContain("it('CollectionLength:rule_0");
+        expect(output).not.toContain("it.todo");
+        expect(output).toContain("CollectionLengthContext =");
+        expect(output).toContain("boards: [");
+        expect(output).toContain("expect(result.valid).toBe(false)");
+        // A real test is emitted, so the validator/expect imports appear.
+        expect(output).toContain("import { describe, it, expect } from 'vitest'");
+        expect(output).toContain("validateCollectionLength");
+    });
+    it("fills defaults for a PARTIAL example (merge over model defaults)", () => {
+        const CollectionLength = policy("CollectionLength", {
+            on: { action: "create", model: LimitTask },
+            requires: { boards: hasMany(LimitBoard) },
+            rules: [
+                {
+                    effect: "prevent",
+                    // Partial: only the count trips the guard; board fields come from defaults.
+                    example: { boards: [{}, {}] },
+                    when: (ctx) => ctx.boards.length > 1,
+                },
+            ],
+        });
+        const output = generatePolicyTests("limit-task", [CollectionLength], thresholdLookup);
+        expect(output).not.toContain("it.todo");
+        // Each empty board partial is completed from LimitBoard defaults.
+        expect(output).toContain("paymentStatus: 'UNPAID'");
+        expect(output).toContain("taskCount: 0");
+        expect(output).toContain("boards: [{");
+    });
+    it("imports only describe/it for a file of pure todos", () => {
+        const CollectionLength = policy("CollectionLength", {
+            on: { action: "create", model: LimitTask },
+            requires: { boards: hasMany(LimitBoard) },
+            rules: [{ effect: "prevent", when: (ctx) => ctx.boards.length > 1 }],
+        });
+        const output = generatePolicyTests("limit-task", [CollectionLength], thresholdLookup);
+        // No real test → no dangling validator / expect imports (keeps lint clean).
+        expect(output).toContain("import { describe, it } from 'vitest'");
+        expect(output).not.toContain("expect");
+        expect(output).not.toContain("validateCollectionLength");
+        expect(output).not.toContain(".policies.js");
+    });
     it("does not let an empty-enum prop zero out the search", () => {
         const EmptyEnumBoard = model("EmptyEnumBoard", {
             props: {

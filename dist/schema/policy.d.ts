@@ -13,6 +13,14 @@ export type PolicyDef<Name extends string = string> = {
 };
 export type PolicyRule = {
     readonly effect: "prevent" | "warn";
+    /**
+     * Optional satisfying context — a ctx that makes `when` return true. Supplied
+     * when the generator's automatic fixture search cannot construct one (e.g. a
+     * guard over embedded-collection length/contents). Used to emit a REAL policy
+     * test instead of an `it.todo`. Validated at definition time: it must satisfy
+     * the guard.
+     */
+    readonly example?: Record<string, unknown>;
     readonly when: (ctx: any) => boolean;
 };
 export declare function policy<const Name extends string>(name: Name, config: {
